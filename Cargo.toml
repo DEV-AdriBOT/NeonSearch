@@ -1,0 +1,69 @@
+[package]
+name = "neonsearch"
+version = "0.1.0"
+edition = "2021"
+authors = ["NeonDev"]
+description = "NeonSearch - A custom web browser built from scratch"
+license = "MIT"
+
+[dependencies]
+# GUI Framework - Updated to latest versions for macOS beta compatibility
+eframe = "0.29"
+egui = "0.29" 
+egui_extras = "0.29"
+
+# Networking
+reqwest = { version = "0.12", features = ["json", "cookies"] }
+tokio = { version = "1.0", features = ["full"] }
+url = "2.4"
+
+# HTML/CSS Parsing (simplified for now)
+# html5ever = "0.26"
+# markup5ever_rcdom = "0.2"
+# cssparser = "0.31"
+# selectors = "0.25"
+
+# JavaScript Engine (disabled for initial build)
+# rusty_v8 = "0.32"
+
+# Image handling
+image = "0.25"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Logging
+log = "0.4"
+env_logger = "0.11"
+
+# Utilities
+anyhow = "1.0"
+thiserror = "1.0"
+uuid = { version = "1.0", features = ["v4"] }
+urlencoding = "2.1"
+chrono = { version = "0.4", features = ["serde"] }
+regex = "1"
+html-entities = "0.1.0"
+flate2 = { version = "1.0", features = ["rust_backend"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["logging"] }
+rustls = { version = "0.23", default-features = false, features = ["std", "tls12", "ring"] }
+webpki-roots = "0.26"
+memchr = "2.7"
+twoway = "0.2"
+brotli = "7.0"
+
+# Platform-specific dependencies for macOS beta compatibility
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.5"
+objc2-foundation = "0.2"
+
+# [target.'cfg(target_os = "windows")'.dependencies]
+# winapi = { version = "0.3", features = ["winuser", "wingdi"] }
+
+# [target.'cfg(target_os = "linux")'.dependencies]
+# gtk = "0.18"
+
+[[bin]]
+name = "neonsearch"
+path = "src/main.rs"
