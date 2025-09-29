@@ -1,6 +1,23 @@
 # 📚 NeonSearch Documentation Summary
 
-## 🎯 **What's New in the Updated README.md**
+## � **Latest Feature: Temporary File System (v0.1.1)**
+
+### 💾 **Enhanced Memory Management**
+NeonSearch now includes an intelligent temporary file system for handling large web content:
+
+- **🎯 Smart Threshold**: Content > 5MB automatically uses temporary files
+- **🗂️ Automatic Management**: Files created/cleaned up transparently  
+- **🧹 Auto-Cleanup**: Files deleted on tab close or navigation
+- **📈 Better Performance**: Eliminates memory pressure from large sites
+- **🔄 Zero API Impact**: Existing rendering code works unchanged
+
+### 🏗️ **Technical Implementation**
+- **Location**: `src/networking/temp_storage.rs`
+- **Integration**: Enhanced `HttpResponse` with dual storage modes
+- **Cleanup**: Automatic via `Drop` trait and navigation hooks
+- **Storage**: System temp directory with UUID-based naming
+
+## �🎯 **What's New in the Updated README.md**
 
 ### ✨ **Complete Overhaul**
 - **📊 Accurate Status**: Changed from "foundational" to "fully functional"
