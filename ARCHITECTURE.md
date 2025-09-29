@@ -487,13 +487,13 @@ pub struct OptimizedRenderer {
 ### 🧪 Testing Strategy
 
 ```mermaid
-pyramid
-    title Testing Pyramid
-    
+pie title Testing Distribution
     "Unit Tests" : 70
     "Integration Tests" : 20  
     "End-to-End Tests" : 10
 ```
+
+**Testing Pyramid Philosophy**: Following the standard testing pyramid approach with heavy emphasis on fast, reliable unit tests at the base, supported by integration tests, and topped with essential end-to-end scenarios.
 
 #### 📋 Test Categories
 
