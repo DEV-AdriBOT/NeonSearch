@@ -5,3 +5,6 @@
 
 # Project Management (keep local only)
 TODO.md
+
+.ds_store
+.gitignore
