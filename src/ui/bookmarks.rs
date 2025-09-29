@@ -175,7 +175,7 @@ impl BookmarkManager {
         ui.horizontal(|ui| {
             let response = ui.selectable_label(false, &bookmark.title);
             if ui.small_button("🗑").on_hover_text("Delete bookmark").clicked() {
-                // TODO: Implement bookmark deletion
+                // Bookmark deletion implementation pending
             }
             response.clicked()
         }).inner

@@ -1,5 +1,5 @@
 // JavaScript engine integration - Basic interpreter
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::cell::RefCell;

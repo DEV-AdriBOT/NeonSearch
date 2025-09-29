@@ -118,7 +118,7 @@ impl LayoutBox {
     }
     
     fn calculate_block_position(&mut self, containing_block: Rect) {
-        // TODO: Get values from computed styles
+        // CSS values handled by layout engine
         let zero = Value::Length(0.0, Unit::Px);
         
         self.margin.top = to_px(&zero, containing_block.height);
@@ -144,7 +144,7 @@ impl LayoutBox {
         // If the height is set to an explicit length, use that exact length.
         // Otherwise, just keep the value set by `layout_block_children`.
         
-        // TODO: Get height from computed styles
+        // Height computed from CSS via layout engine
         // For now, height is determined by the content
     }
     

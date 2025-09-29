@@ -1,5 +1,4 @@
 use std::fmt;
-use anyhow::Result;
 
 #[derive(Debug, Clone)]
 pub struct BrowserError {

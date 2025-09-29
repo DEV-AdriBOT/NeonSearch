@@ -1,7 +1,6 @@
 use crate::engine::dom::DOMNode;
 use crate::js::JSEngine;
 use std::collections::HashMap;
-use anyhow::Result;
 
 pub fn parse(html: &str) -> DOMNode {
     let mut parser = HTMLParser::new(html.to_string());

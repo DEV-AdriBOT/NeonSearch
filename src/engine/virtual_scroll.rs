@@ -1,6 +1,5 @@
 use std::rc::Rc;
 use std::cell::RefCell;
-use anyhow::Result;
 use crate::engine::dom::DOMNode;
 
 /// Configuration for virtual scrolling behavior

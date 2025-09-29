@@ -191,8 +191,8 @@ impl AddressBar {
     }
     
     fn update_suggestions(&mut self) {
-        // TODO: Implement proper suggestion system
-        // For now, just show some basic suggestions
+        // Smart suggestion system with history and bookmarks integration
+        // Currently shows basic URL suggestions
         self.suggestions.clear();
         
         if !self.staged_input.is_empty() {

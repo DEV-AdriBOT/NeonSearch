@@ -99,7 +99,7 @@ pub fn test_html_with_js() {
 "#;
 
     match JSEngine::new() {
-        Ok(mut engine) => {
+        Ok(engine) => {
             println!("✅ Created JavaScript engine for HTML test");
             
             // Parse HTML with JavaScript execution

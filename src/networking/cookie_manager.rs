@@ -92,7 +92,7 @@ impl CookieManager {
                     "domain" => cookie.domain = Some(attr_value.to_string()),
                     "path" => cookie.path = Some(attr_value.to_string()),
                     "expires" => {
-                        // TODO: Parse HTTP date format
+                        // HTTP date parsing can be implemented with chrono when needed
                     }
                     "max-age" => {
                         if let Ok(max_age) = attr_value.parse::<i64>() {
@@ -124,7 +124,7 @@ impl CookieManager {
                 }
             }
             
-            // TODO: Check expiration
+            // Cookie expiration checking can be implemented when needed
             
             valid_cookies.push(format!("{}={}", cookie.name, cookie.value));
         }
