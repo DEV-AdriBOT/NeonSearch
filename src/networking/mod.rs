@@ -4,11 +4,13 @@ pub mod cookie_manager;
 pub mod manual_client;
 pub mod image_loader;
 pub mod performance;
+pub mod temp_storage;
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
+use temp_storage::{TempStorageManager, TempFile};
 
 // Maximum content size to prevent memory exhaustion (50MB)
 const MAX_CONTENT_SIZE: usize = 50 * 1024 * 1024;
@@ -26,7 +28,9 @@ pub struct HttpResponse {
     pub status_code: u16,
     pub status_text: String,
     pub headers: HashMap<String, String>,
-    pub body: Vec<u8>,
+    // Content storage - either in memory or temporary file
+    pub body: Vec<u8>,  // Keep for small content/backward compatibility
+    pub temp_file: Option<TempFile>,  // Use for large content
     // Cache for decompressed content to prevent re-processing
     cached_string: Arc<Mutex<Option<String>>>,
 }
@@ -67,6 +71,18 @@ impl HttpResponse {
             status_text,
             headers,
             body,
+            temp_file: None,
+            cached_string: Arc::new(Mutex::new(None)),
+        }
+    }
+
+    pub fn new_with_temp_file(status_code: u16, status_text: String, headers: HashMap<String, String>, temp_file: TempFile) -> Self {
+        Self {
+            status_code,
+            status_text,
+            headers,
+            body: Vec::new(),  // Empty body when using temp file
+            temp_file: Some(temp_file),
             cached_string: Arc::new(Mutex::new(None)),
         }
     }
@@ -92,17 +108,22 @@ impl HttpResponse {
     }
     
     fn decompress_body_internal(&self) -> Result<String> {
-        // Check content size before processing
-        if self.body.len() > MAX_CONTENT_SIZE {
-            return Err(anyhow::anyhow!(
-                "Content too large: {} bytes (max: {} bytes). Use streaming for large sites.",
-                self.body.len(),
-                MAX_CONTENT_SIZE
-            ));
-        }
-        
-        // Comprehensive content-encoding handling
-        let mut data = self.body.clone();
+        // Get content from either memory or temporary file
+        let mut data = if let Some(ref temp_file) = self.temp_file {
+            // Read content from temporary file
+            let temp_manager = TempStorageManager::new()?;
+            temp_manager.read_content(temp_file)?
+        } else {
+            // Use in-memory content
+            if self.body.len() > MAX_CONTENT_SIZE {
+                return Err(anyhow::anyhow!(
+                    "Content too large: {} bytes (max: {} bytes). Use streaming for large sites.",
+                    self.body.len(),
+                    MAX_CONTENT_SIZE
+                ));
+            }
+            self.body.clone()
+        };
         
         if let Some(encoding) = self.get_header("Content-Encoding").or_else(|| self.get_header("content-encoding")) {
             let encodings: Vec<String> = encoding.split(',').map(|e| e.trim().to_lowercase()).collect();
@@ -226,6 +247,35 @@ impl HttpResponse {
         self.body.len() > MAX_CONTENT_SIZE / 2 // Half of max size threshold
     }
     
+    /// Get raw body content as bytes (from memory or temp file)
+    pub fn get_raw_body(&self) -> Result<Vec<u8>> {
+        if let Some(ref temp_file) = self.temp_file {
+            let temp_manager = TempStorageManager::new()?;
+            temp_manager.read_content(temp_file)
+        } else {
+            Ok(self.body.clone())
+        }
+    }
+
+    /// Check if response uses temporary file storage
+    pub fn uses_temp_file(&self) -> bool {
+        self.temp_file.is_some()
+    }
+
+    /// Get temporary file info if using file storage
+    pub fn get_temp_file(&self) -> Option<&TempFile> {
+        self.temp_file.as_ref()
+    }
+
+    /// Cleanup temporary file if present
+    pub fn cleanup_temp_file(&self) -> Result<()> {
+        if let Some(ref temp_file) = self.temp_file {
+            let temp_manager = TempStorageManager::new()?;
+            temp_manager.remove_file(temp_file)?;
+        }
+        Ok(())
+    }
+
     pub fn get_header(&self, name: &str) -> Option<&String> {
         self.headers.get(name)
     }
