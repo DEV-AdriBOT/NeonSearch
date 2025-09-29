@@ -11,6 +11,8 @@ pub struct BrowserTab {
     pub history: Vec<String>,
     pub history_index: usize,
     pub redirects_followed: usize,
+    // Track current response for cleanup of temporary files
+    current_response: Option<HttpResponse>,
 }
 
 impl BrowserTab {
@@ -24,6 +26,7 @@ impl BrowserTab {
             history: vec!["about:home".to_string()],
             history_index: 0,
             redirects_followed: 0,
+            current_response: None,
         }
     }
     
@@ -69,6 +72,9 @@ impl BrowserTab {
     }
     
     fn load_page(&mut self) -> bool {
+        // Clean up any existing temporary files before loading new content
+        self.cleanup_temp_files();
+        
         self.loading = true;
         self.error = None;
         self.redirects_followed = 0;
@@ -143,6 +149,8 @@ impl BrowserTab {
         
         match result {
             Ok(response) => {
+                // Store the response for potential cleanup later
+                self.current_response = Some(response.clone());
                 if response.is_redirect() {
                     if let Some(location) = response.get_header("Location").cloned()
                         .or_else(|| response.get_header("location").cloned()) {
@@ -250,5 +258,36 @@ impl BrowserTab {
                 self.web_page = Some(WebPage::create_error_page(&self.url, &e));
             }
         }
+    }
+
+    /// Clean up temporary files associated with the current page
+    pub fn cleanup_temp_files(&mut self) {
+        if let Some(response) = &self.current_response {
+            if let Err(e) = response.cleanup_temp_file() {
+                eprintln!("Failed to cleanup temporary file: {}", e);
+            }
+        }
+        self.current_response = None;
+    }
+
+    /// Get information about current temporary file usage
+    pub fn temp_file_info(&self) -> Option<String> {
+        if let Some(response) = &self.current_response {
+            if let Some(temp_file) = response.get_temp_file() {
+                return Some(format!(
+                    "Using temp file: {} ({} bytes)", 
+                    temp_file.path.display(), 
+                    temp_file.size
+                ));
+            }
+        }
+        None
+    }
+}
+
+impl Drop for BrowserTab {
+    fn drop(&mut self) {
+        // Ensure cleanup on drop
+        self.cleanup_temp_files();
     }
 }
