@@ -265,6 +265,7 @@ pub mod networking {
     pub mod url_parser;      // WHATWG URL specification
     pub mod image_loader;    // Async image loading
     pub mod performance;     // Network metrics & caching
+    pub mod temp_storage;    // Temporary file management for large content
 }
 ```
 
@@ -276,6 +277,26 @@ pub mod networking {
 | **📦 Compression** | Brotli, gzip, deflate | Up to 90% size reduction |
 | **⚡ Caching** | RFC 7234 compliant | 95% cache hit ratio |
 | **🔒 Security** | TLS 1.3, HSTS | A+ SSL Labs rating |
+| **💾 Memory Management** | Temp file system | 5MB+ content → disk storage |
+
+#### 🗂️ Temporary File System
+
+**Large Content Strategy**: Content exceeding 5MB is automatically stored in temporary files rather than memory.
+
+```rust
+// Automatic content routing based on size
+if content.len() > TEMP_FILE_THRESHOLD { // 5MB
+    HttpResponse::new_with_temp_file(status, headers, temp_file)
+} else {
+    HttpResponse::new(status, headers, content) // Memory storage
+}
+```
+
+**Benefits:**
+- **📉 Reduced Memory Usage** → Prevents browser crashes on large sites
+- **⚡ Better Performance** → Eliminates memory pressure
+- **🧹 Automatic Cleanup** → Files deleted on tab close/navigation
+- **🔄 Transparent Operation** → No API changes for rendering engine
 
 ---
 
