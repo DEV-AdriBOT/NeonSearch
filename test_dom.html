@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>NeonSearch DOM API Test</title>
+</head>
+<body>
+    <h1 id="main-title">DOM API Test Page</h1>
+    <div class="container">
+        <p>This is a test page for NeonSearch's DOM API functionality.</p>
+        <button onclick="testDOMAPI()">Test DOM APIs</button>
+    </div>
+    
+    <div id="output"></div>
+    
+    <script>
+        function testDOMAPI() {
+            console.log("Testing DOM API functionality...");
+            
+            // Test document.getElementById
+            let title = document.getElementById("main-title");
+            console.log("Found title element:", title);
+            
+            // Test document.querySelector
+            let container = document.querySelector(".container");
+            console.log("Found container:", container);
+            
+            // Test document.querySelectorAll
+            let allDivs = document.querySelectorAll("div");
+            console.log("Found divs:", allDivs);
+            
+            // Test document.getElementsByTagName
+            let paragraphs = document.getElementsByTagName("p");
+            console.log("Found paragraphs:", paragraphs);
+            
+            // Test document.getElementsByClassName
+            let containers = document.getElementsByClassName("container");
+            console.log("Found containers by class:", containers);
+            
+            // Test createElement
+            let newElement = document.createElement("div");
+            console.log("Created new element:", newElement);
+            
+            // Test createTextNode
+            let textNode = document.createTextNode("Hello from JavaScript!");
+            console.log("Created text node:", textNode);
+        }
+        
+        // Auto-run test when page loads
+        testDOMAPI();
+    </script>
+</body>
+</html>

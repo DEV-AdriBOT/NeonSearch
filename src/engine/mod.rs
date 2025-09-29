@@ -11,6 +11,9 @@ pub mod background_processor;
 
 use eframe::egui;
 use self::dom::DOMNode;
+use crate::js::JSEngine;
+use std::rc::Rc;
+use std::cell::RefCell;
 
 pub struct WebPage {
     pub dom: DOMNode,
@@ -22,6 +25,7 @@ pub struct WebPage {
     pub loading_progress: Option<LoadingProgress>,
     pub content_size: usize,
     pub is_large_content: bool,
+    pub js_engine: Option<JSEngine>,
 }
 
 /// Progress tracking for large website loading
@@ -118,7 +122,7 @@ impl WebPage {
             </html>
         "#;
         
-        Self::from_html(html)
+        Self::from_html(html, None)
     }
     
     pub fn create_blank_page() -> Self {
@@ -139,7 +143,7 @@ impl WebPage {
             </html>
         "#;
         
-        Self::from_html(html)
+        Self::from_html(html, None)
     }
     
     pub fn create_loading_page(url: &str) -> Self {
@@ -187,7 +191,7 @@ impl WebPage {
             </html>
         "#, url);
         
-        Self::from_html(&html)
+        Self::from_html(&html, None)
     }
     
     pub fn create_loading_page_with_progress(url: &str, progress: LoadingProgress) -> Self {
@@ -287,7 +291,7 @@ impl WebPage {
             </html>
         "#, url, progress_bar);
         
-        let mut page = Self::from_html(&html);
+        let mut page = Self::from_html(&html, None);
         page.loading_progress = Some(progress);
         page
     }
@@ -354,7 +358,7 @@ impl WebPage {
             </html>
         "#, url, error);
         
-        Self::from_html(&html)
+        Self::from_html(&html, None)
     }
     
     pub fn create_simple_text_page(content: &str, url: &str) -> Self {
@@ -415,7 +419,7 @@ impl WebPage {
         "#, title, url, Self::escape_html(content));
         
         // Use the regular from_html method but with our simplified structure
-        Self::from_html(&simple_html)
+        Self::from_html(&simple_html, None)
     }
     
     // Helper method to escape HTML content for safe display
@@ -428,7 +432,7 @@ impl WebPage {
             .replace('\'', "&#39;")
     }
     
-    pub fn from_html(html: &str) -> Self {
+    pub fn from_html(html: &str, mut js_engine: Option<JSEngine>) -> Self {
         let content_size = html.len();
         let is_large_content = content_size > 25 * 1024; // 25KB threshold
         
@@ -440,7 +444,13 @@ impl WebPage {
             html.to_string()
         };
         
-        let dom = html_parser::parse(&limited_html);
+        // Parse HTML with JavaScript execution support
+        let dom = if js_engine.is_some() {
+            html_parser::parse_with_js(&limited_html, &mut js_engine)
+        } else {
+            html_parser::parse(&limited_html)
+        };
+        
         let stylesheets = Vec::new(); // TODO: Parse CSS from <style> tags and external stylesheets
         let title = extract_title(&limited_html);
         let plain = strip_html(&limited_html);
@@ -469,6 +479,7 @@ impl WebPage {
             loading_progress,
             content_size,
             is_large_content,
+            js_engine,
         }
     }
     
@@ -788,6 +799,17 @@ impl WebPage {
                             .size(14.0)
                     );
                 }
+            },
+            DOMNode::Comment(comment) => {
+                // Only show comments in debug mode
+                if cfg!(debug_assertions) {
+                    ui.label(
+                        egui::RichText::new(format!("<!-- {} -->", comment))
+                            .color(NeonTheme::MUTED_TEXT)
+                            .size(10.0)
+                            .italics()
+                    );
+                }
             }
         }
     }
@@ -800,7 +822,8 @@ impl WebPage {
                     .map(|child| self.extract_text(child))
                     .collect::<Vec<_>>()
                     .join(" ")
-            }
+            },
+            DOMNode::Comment(_) => String::new(), // Comments don't contribute to text
         }
     }
 }

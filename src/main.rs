@@ -13,6 +13,12 @@ fn main() -> Result<(), eframe::Error> {
     env_logger::init();
     info!("Starting NeonSearch Browser by NeonDev™");
 
+    // Test JavaScript engine on startup
+    println!("\n🚀 NeonSearch v0.2.0 - JavaScript Engine Test");
+    js::test::test_js_engine();
+    js::test::test_html_with_js();
+    println!(""); // Empty line for readability
+
     // macOS beta compatibility workarounds
     #[cfg(target_os = "macos")]
     {

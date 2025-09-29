@@ -8,6 +8,7 @@ pub enum DOMNode {
         children: Vec<DOMNode>,
     },
     Text(String),
+    Comment(String),
 }
 
 impl DOMNode {
@@ -21,6 +22,10 @@ impl DOMNode {
     
     pub fn new_text(content: String) -> Self {
         DOMNode::Text(content)
+    }
+    
+    pub fn new_comment(content: String) -> Self {
+        DOMNode::Comment(content)
     }
     
     pub fn add_child(&mut self, child: DOMNode) {
@@ -48,6 +53,14 @@ impl DOMNode {
             Some(tag_name)
         } else {
             None
+        }
+    }
+    
+    pub fn text_content(&self) -> Option<&String> {
+        match self {
+            DOMNode::Text(content) => Some(content),
+            DOMNode::Comment(content) => Some(content),
+            _ => None,
         }
     }
     

@@ -206,6 +206,7 @@ pub fn build_layout_tree(root: &StyledNode) -> LayoutBox {
             }
         }
         DOMNode::Text(_) => LayoutBox::new(BoxType::InlineNode(root.node.clone())),
+        DOMNode::Comment(_) => LayoutBox::new(BoxType::InlineNode(root.node.clone())), // Comments don't affect layout
     };
     
     for child in &root.children {

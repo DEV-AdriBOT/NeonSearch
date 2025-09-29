@@ -23,8 +23,9 @@ url = "2.4"
 # cssparser = "0.31"
 # selectors = "0.25"
 
-# JavaScript Engine (disabled for initial build)
-# rusty_v8 = "0.32"
+# JavaScript Engine - Basic interpreter implementation
+# boa_engine = "0.20"  # Disabled due to compatibility issues
+# boa_runtime = "0.20" # Will explore V8 integration later
 
 # Image handling
 image = "0.25"

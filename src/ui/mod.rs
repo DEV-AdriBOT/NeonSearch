@@ -14,6 +14,7 @@ mod navigation;
 mod bookmarks;
 pub mod theme;
 mod error_handler;
+mod dev_console;
 
 pub use browser_tab::BrowserTab;
 pub use address_bar::AddressBar;
@@ -21,6 +22,7 @@ pub use navigation::NavigationBar;
 pub use bookmarks::BookmarkManager;
 pub use theme::NeonTheme;
 pub use error_handler::{BrowserError, ErrorType, ErrorRecovery};
+pub use dev_console::DevConsole;
 
 pub struct NeonSearchApp {
     tabs: HashMap<Uuid, BrowserTab>,
@@ -28,6 +30,7 @@ pub struct NeonSearchApp {
     address_bar: AddressBar,
     navigation_bar: NavigationBar,
     bookmark_manager: BookmarkManager,
+    dev_console: DevConsole,
     show_bookmarks: bool,
     show_settings: bool,
     network_receiver: Receiver<(Uuid, Result<HttpResponse, String>)>,
@@ -53,6 +56,7 @@ impl NeonSearchApp {
             address_bar: AddressBar::new(),
             navigation_bar: NavigationBar::new(),
             bookmark_manager: BookmarkManager::new(),
+            dev_console: DevConsole::new(),
             show_bookmarks: false,
             show_settings: false,
             network_receiver,
@@ -266,6 +270,11 @@ impl eframe::App for NeonSearchApp {
                             }
                         }
                     }
+                }
+                
+                // F12 to toggle developer console
+                if i.key_pressed(egui::Key::F12) {
+                    self.dev_console.toggle_visibility();
                 }
             });
         } else {
@@ -554,6 +563,41 @@ impl eframe::App for NeonSearchApp {
                     });
                 }
             });
+        
+        // Developer Console (F12 to toggle)
+        if self.dev_console.is_visible() {
+            egui::TopBottomPanel::bottom("dev_console_panel")
+                .resizable(true)
+                .default_height(300.0)
+                .frame(
+                    egui::Frame::none()
+                        .fill(NeonTheme::DARKER_BG)
+                        .stroke(egui::Stroke::new(1.0, NeonTheme::BORDER_COLOR))
+                        .inner_margin(egui::Margin::same(8.0))
+                )
+                .show(ctx, |ui| {
+                    // Get reference to active tab's JS engine
+                    if let Some(active_id) = self.active_tab {
+                        if let Some(active_tab) = self.tabs.get_mut(&active_id) {
+                            if let Some(ref mut web_page) = active_tab.web_page {
+                                self.dev_console.render(ui, &mut web_page.js_engine);
+                            } else {
+                                // No webpage loaded, render with None
+                                let mut no_engine: Option<crate::js::JSEngine> = None;
+                                self.dev_console.render(ui, &mut no_engine);
+                            }
+                        } else {
+                            // No active tab, render with None
+                            let mut no_engine: Option<crate::js::JSEngine> = None;
+                            self.dev_console.render(ui, &mut no_engine);
+                        }
+                    } else {
+                        // No active tab, render with None
+                        let mut no_engine: Option<crate::js::JSEngine> = None;
+                        self.dev_console.render(ui, &mut no_engine);
+                    }
+                });
+        }
         
         // Side panels with enhanced styling
         if self.show_bookmarks {

@@ -216,7 +216,7 @@ impl BrowserTab {
                             let mut page = if use_simple_rendering {
                                 WebPage::create_simple_text_page(&html, &self.url)
                             } else {
-                                WebPage::from_html(&html)
+                                WebPage::from_html(&html, None)
                             };
                             
                             // Add notification for truncated content

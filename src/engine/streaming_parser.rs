@@ -276,6 +276,7 @@ impl StreamingHtmlParser {
                     _ => None
                 }
             },
+            DOMNode::Comment(_) => None, // Comments don't contribute to text content
         }
     }
 
