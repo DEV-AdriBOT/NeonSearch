@@ -7,7 +7,7 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio_rustls::TlsConnector;
 use rustls::ClientConfig;
 use webpki_roots;
-use crate::networking::HttpResponse;
+use crate::networking::{HttpResponse, temp_storage::TempStorageManager};
 
 #[derive(Debug, Clone, Copy)]
 pub enum FetchPhase {
@@ -35,6 +35,9 @@ pub struct ManualHttpClient {
     max_redirects: usize,
     max_body_size: usize,
 }
+
+// Threshold for when to use temporary file storage instead of memory (5MB)
+const TEMP_FILE_THRESHOLD: usize = 5 * 1024 * 1024;
 
 impl ManualHttpClient {
     pub fn new() -> Result<Self> {
@@ -483,8 +486,27 @@ impl ManualHttpClient {
             final_headers.insert(standard_key, v);
         }
         
+        // Decide whether to use memory or temporary file storage
+        let response = if body.len() > TEMP_FILE_THRESHOLD {
+            println!("Large content ({}KB) - using temporary file storage", body.len() / 1024);
+            
+            // Store content in temporary file
+            let temp_manager = TempStorageManager::new()
+                .map_err(|e| anyhow!("Failed to create temp storage manager: {}", e))?;
+            
+            let content_type = final_headers.get("Content-Type").cloned();
+            let temp_file = temp_manager.store_content(&body, content_type)
+                .map_err(|e| anyhow!("Failed to store content in temp file: {}", e))?;
+                
+            println!("Content stored in temporary file: {:?}", temp_file.path);
+            HttpResponse::new_with_temp_file(status_code, status_text, final_headers, temp_file)
+        } else {
+            // Use traditional in-memory storage for smaller content
+            HttpResponse::new(status_code, status_text, final_headers, body)
+        };
+        
         Ok(ManualFetchResult { 
-            response: HttpResponse::new(status_code, status_text, final_headers, body), 
+            response, 
             phases, 
             redirects 
         })
