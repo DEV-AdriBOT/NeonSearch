@@ -1,6 +1,7 @@
 use eframe::egui;
 use crate::engine::WebPage;
 use crate::networking::HttpResponse;
+use crate::ui::{NeonTheme, NeonIcons};
 
 pub struct BrowserTab {
     pub title: String,
@@ -123,7 +124,10 @@ impl BrowserTab {
                 ui.label("• Check your internet connection");
                 ui.label("• Make sure the URL is correct");
                 ui.label("• Try adding https:// prefix");
-                if ui.button("🔄 Retry").clicked() {
+                if ui.button(
+                    egui::RichText::new(format!("{} Retry", NeonIcons::ARROW_CLOCKWISE))
+                        .color(NeonTheme::NEON_BLUE)
+                ).clicked() {
                     retry_clicked = true;
                 }
             });

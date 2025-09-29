@@ -1,6 +1,7 @@
 // Developer Console UI for JavaScript debugging
 use eframe::egui;
 use crate::js::JSEngine;
+use crate::ui::{NeonTheme, NeonIcons};
 use std::collections::VecDeque;
 
 #[derive(Debug, Clone)]
@@ -78,7 +79,7 @@ impl DevConsole {
         
         // Add welcome message
         console.add_message(ConsoleMessage::Info(
-            "🚀 NeonSearch Developer Console - JavaScript Engine v0.2.0".to_string()
+            format!("{} NeonSearch Developer Console - JavaScript Engine v0.2.0", NeonIcons::TERMINAL)
         ));
         console.add_message(ConsoleMessage::Log(
             "Type JavaScript commands to execute them. Press F12 to toggle console.".to_string()
@@ -207,7 +208,7 @@ impl DevConsole {
         }
         
         // Console window
-        egui::Window::new("🧑‍💻 Developer Console")
+        egui::Window::new(format!("{} Developer Console", NeonIcons::TERMINAL_WINDOW))
             .default_width(800.0)
             .default_height(400.0)
             .resizable(true)

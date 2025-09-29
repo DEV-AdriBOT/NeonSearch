@@ -1,5 +1,5 @@
 use eframe::egui;
-use crate::ui::theme::NeonTheme;
+use crate::ui::{NeonTheme, NeonIcons};
 
 // Editing lifecycle states for the address bar
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -51,13 +51,13 @@ impl AddressBar {
                     
                     // Enhanced security indicator
                     let (icon, tooltip, color) = if self.current_url.starts_with("https://") {
-                        ("🔒", "Secure HTTPS connection", NeonTheme::SUCCESS_COLOR)
+                        (NeonIcons::LOCK, "Secure HTTPS connection", NeonTheme::SUCCESS_COLOR)
                     } else if self.current_url.starts_with("http://") {
-                        ("⚠️", "Insecure HTTP connection", NeonTheme::WARNING_COLOR)
+                        (NeonIcons::WARNING, "Insecure HTTP connection", NeonTheme::WARNING_COLOR)
                     } else if self.current_url.starts_with("about:") {
-                        ("🏠", "Browser page", NeonTheme::NEON_BLUE)
+                        (NeonIcons::HOUSE, "Browser page", NeonTheme::NEON_BLUE)
                     } else {
-                        ("🌐", "Local or custom scheme", NeonTheme::MUTED_TEXT)
+                        (NeonIcons::GLOBE, "Local or custom scheme", NeonTheme::MUTED_TEXT)
                     };
                     
                     ui.label(egui::RichText::new(icon).color(color).size(16.0))
@@ -86,7 +86,7 @@ impl AddressBar {
 
                     let text_edit = egui::TextEdit::singleline(&mut self.edit_buffer)
                         .id(text_edit_id)
-                        .hint_text("🔍 Search or enter URL...")
+                        .hint_text(format!("{} Search or enter URL...", NeonIcons::MAGNIFYING_GLASS))
                         .margin(egui::vec2(8.0, 6.0))
                         .desired_width(available_width);
                         

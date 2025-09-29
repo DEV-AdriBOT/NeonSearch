@@ -1,6 +1,7 @@
 use eframe::egui;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use crate::ui::{NeonTheme, NeonIcons};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Bookmark {
@@ -61,7 +62,11 @@ impl BookmarkManager {
     pub fn show(&mut self, ui: &mut egui::Ui) -> Option<String> {
         let mut navigate_to = None;
         
-        ui.heading("📖 Bookmarks");
+        ui.heading(
+            egui::RichText::new(format!("{} Bookmarks", NeonIcons::BOOKMARKS))
+                .size(18.0)
+                .color(NeonTheme::NEON_CYAN)
+        );
         ui.separator();
         
         // Search bar
@@ -69,7 +74,10 @@ impl BookmarkManager {
             ui.label("Search:");
             ui.text_edit_singleline(&mut self.search_query);
             
-            if ui.button("➕ Add").clicked() {
+            if ui.button(
+                egui::RichText::new(format!("{} Add", NeonIcons::PLUS))
+                    .color(NeonTheme::NEON_GREEN)
+            ).clicked() {
                 self.show_add_dialog = true;
             }
         });
@@ -174,7 +182,11 @@ impl BookmarkManager {
     fn show_bookmark(&self, ui: &mut egui::Ui, bookmark: &Bookmark) -> bool {
         ui.horizontal(|ui| {
             let response = ui.selectable_label(false, &bookmark.title);
-            if ui.small_button("🗑").on_hover_text("Delete bookmark").clicked() {
+            if ui.small_button(
+                egui::RichText::new(NeonIcons::TRASH)
+                    .color(NeonTheme::ERROR_COLOR)
+                    .size(12.0)
+            ).on_hover_text("Delete bookmark").clicked() {
                 // Bookmark deletion implementation pending
             }
             response.clicked()

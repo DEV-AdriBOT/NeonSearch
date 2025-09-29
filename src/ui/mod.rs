@@ -1,4 +1,4 @@
-use eframe::egui;
+use eframe::egui::{self, Color32, Rounding, Shadow, Stroke, Vec2};
 use tokio::runtime::Runtime;
 use std::collections::HashMap;
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -15,6 +15,7 @@ mod bookmarks;
 pub mod theme;
 mod error_handler;
 mod dev_console;
+mod icons;
 
 pub use browser_tab::BrowserTab;
 pub use address_bar::AddressBar;
@@ -23,6 +24,7 @@ pub use bookmarks::BookmarkManager;
 pub use theme::NeonTheme;
 pub use error_handler::{BrowserError, ErrorType, ErrorRecovery};
 pub use dev_console::DevConsole;
+pub use icons::NeonIcons;
 
 pub struct NeonSearchApp {
     tabs: HashMap<Uuid, BrowserTab>,
@@ -286,125 +288,189 @@ impl eframe::App for NeonSearchApp {
             });
         }
         
-        // Top panel with navigation and address bar
+        // Modern top panel with sophisticated design
         egui::TopBottomPanel::top("top_panel")
-            .exact_height(60.0)
+            .exact_height(80.0)
+            .frame(egui::Frame::none().fill(NeonTheme::DARK_BG))
             .show(ctx, |ui| {
-                // Add subtle gradient background
                 let rect = ui.available_rect_before_wrap();
-                NeonTheme::add_glow_effect(ui, rect, NeonTheme::NEON_CYAN);
                 
-                ui.horizontal_centered(|ui| {
-                    ui.add_space(12.0);
-                    
-                    // NeonSearch logo/title with enhanced styling
-                    ui.label(
-                        egui::RichText::new("⚡ NeonSearch")
-                            .size(24.0)
-                            .color(NeonTheme::NEON_CYAN)
-                            .strong()
-                    );
+                // Create modern background with subtle gradient effect
+                NeonTheme::create_modern_background(ui, rect);
                 
-                ui.separator();
+                // Add bottom accent line
+                ui.painter().hline(
+                    rect.left()..=rect.right(),
+                    rect.bottom(),
+                    egui::Stroke::new(2.0, NeonTheme::NEON_CYAN.gamma_multiply(0.6))
+                );
                 
-                // Navigation buttons
-                let nav_action = self.navigation_bar.show(ui, self.active_tab.and_then(|id| self.tabs.get(&id)));
-                if let Some(active_id) = self.active_tab {
-                    if let Some(active_tab) = self.tabs.get_mut(&active_id) {
-                        let needs_fetch = match nav_action {
-                            crate::ui::navigation::NavigationAction::Back => active_tab.go_back(),
-                            crate::ui::navigation::NavigationAction::Forward => active_tab.go_forward(),
-                            crate::ui::navigation::NavigationAction::Reload => active_tab.reload(),
-                            crate::ui::navigation::NavigationAction::Home => active_tab.navigate_to("about:home".to_string()),
-                            crate::ui::navigation::NavigationAction::None => false,
-                        };
+                ui.allocate_ui_with_layout(
+                    egui::Vec2::new(ui.available_width(), 80.0),
+                    egui::Layout::left_to_right(egui::Align::Center),
+                    |ui| {
+                        ui.add_space(20.0);
                         
-                        let current_url = active_tab.url.clone();
-                        self.address_bar.set_url(current_url.clone());
+                        // Enhanced NeonSearch logo with glow
+                        ui.allocate_ui_with_layout(
+                            egui::Vec2::new(200.0, ui.available_height()),
+                            egui::Layout::left_to_right(egui::Align::Center),
+                            |ui| {
+                                // Logo with modern styling
+                                let logo_rect = ui.available_rect_before_wrap();
+                                
+                                ui.horizontal(|ui| {
+                                    ui.add_space(4.0);
+                                    
+                                    // Lightning bolt with glow effect
+                                    let lightning_response = ui.label(
+                                        egui::RichText::new("⚡")
+                                            .size(32.0)
+                                            .color(NeonTheme::NEON_CYAN)
+                                    );
+                                    
+                                    // Add glow around the lightning
+                                    NeonTheme::add_glow_effect(ui, lightning_response.rect, NeonTheme::NEON_CYAN, 0.8);
+                                    
+                                    ui.add_space(8.0);
+                                    
+                                    // Brand name
+                                    ui.label(
+                                        egui::RichText::new("NeonSearch")
+                                            .size(28.0)
+                                            .color(NeonTheme::PRIMARY_TEXT)
+                                            .strong()
+                                    );
+                                });
+                            },
+                        );
                         
-                        if needs_fetch {
-                            self.fetch_url(active_id, current_url);
-                        }
-                    }
-                }
-                
-                ui.separator();
-                
-                // Address bar
-                if let Some(navigate_url) = self.address_bar.show(ui) {
-                    if let Some(active_id) = self.active_tab {
-                        if let Some(active_tab) = self.tabs.get_mut(&active_id) {
-                            // Normalize URL - add https:// if no protocol is specified
-                            let normalized_url = if !navigate_url.starts_with("http://") && 
-                                                    !navigate_url.starts_with("https://") && 
-                                                    !navigate_url.starts_with("about:") {
-                                format!("https://{}", navigate_url)
-                            } else {
-                                navigate_url
-                            };
+                        ui.add_space(24.0);
+                        
+                        // Navigation controls with modern styling
+                        ui.allocate_ui_with_layout(
+                            egui::Vec2::new(200.0, ui.available_height()),
+                            egui::Layout::left_to_right(egui::Align::Center),
+                            |ui| {
+                                // Use existing navigation bar
+                                let nav_action = self.navigation_bar.show(ui, self.active_tab.and_then(|id| self.tabs.get(&id)));
+                                
+                                // Handle navigation actions (simplified)
+                                if let Some(active_id) = self.active_tab {
+                                    if let Some(active_tab) = self.tabs.get_mut(&active_id) {
+                                        let needs_fetch = match nav_action {
+                                            crate::ui::navigation::NavigationAction::Back => active_tab.go_back(),
+                                            crate::ui::navigation::NavigationAction::Forward => active_tab.go_forward(),
+                                            crate::ui::navigation::NavigationAction::Reload => active_tab.reload(),
+                                            crate::ui::navigation::NavigationAction::Home => active_tab.navigate_to("about:home".to_string()),
+                                            crate::ui::navigation::NavigationAction::None => false,
+                                        };
+                                        
+                                        if needs_fetch {
+                                            let current_url = active_tab.url.clone();
+                                            self.fetch_url(active_id, current_url);
+                                        }
+                                    }
+                                }
+                            },
+                        );
+                        
+                        ui.add_space(16.0);
+                        
+                        // Address bar with enhanced styling
+                        let remaining_width = ui.available_width().max(400.0) - 180.0;
+                        ui.allocate_ui_with_layout(
+                            egui::Vec2::new(remaining_width, ui.available_height()),
+                            egui::Layout::left_to_right(egui::Align::Center),
+                            |ui| {
+                                // Use existing address bar
+                                if let Some(navigate_url) = self.address_bar.show(ui) {
+                                    if let Some(active_id) = self.active_tab {
+                                        if let Some(active_tab) = self.tabs.get_mut(&active_id) {
+                                            // Normalize URL - add https:// if no protocol is specified
+                                            let normalized_url = if !navigate_url.starts_with("http://") && 
+                                                                    !navigate_url.starts_with("https://") && 
+                                                                    !navigate_url.starts_with("about:") {
+                                                format!("https://{}", navigate_url)
+                                            } else {
+                                                navigate_url
+                                            };
+                                            
+                                            let needs_fetch = active_tab.navigate_to(normalized_url);
+                                            let current_url = active_tab.url.clone();
+                                            self.address_bar.set_url(current_url.clone());
+                                            
+                                            if needs_fetch {
+                                                self.fetch_url(active_id, current_url);
+                                                self.loading_tabs.insert(active_id, std::time::Instant::now());
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                        );
+                        
+                        ui.add_space(16.0);
+                        
+                        // Modern action buttons
+                        ui.horizontal(|ui| {
+                            ui.spacing_mut().item_spacing.x = 12.0;
                             
-                            let needs_fetch = active_tab.navigate_to(normalized_url);
-                            let current_url = active_tab.url.clone();
-                            self.address_bar.set_url(current_url.clone());
+                            // Bookmarks button with modern styling
+                            let bookmarks_btn = egui::Button::new(
+                                egui::RichText::new(format!("{} Bookmarks", icons::NeonIcons::BOOKMARKS))
+                                    .size(13.0)
+                                    .color(if self.show_bookmarks { NeonTheme::PRIMARY_TEXT } else { NeonTheme::SECONDARY_TEXT })
+                            )
+                            .fill(if self.show_bookmarks { NeonTheme::BUTTON_PRIMARY } else { NeonTheme::BUTTON_IDLE })
+                            .stroke(Stroke::new(1.0, if self.show_bookmarks { NeonTheme::NEON_CYAN } else { NeonTheme::BORDER_COLOR }))
+                            .rounding(Rounding::same(12.0));
                             
-                            if needs_fetch {
-                                self.fetch_url(active_id, current_url);
-                                self.loading_tabs.insert(active_id, std::time::Instant::now());
+                            if ui.add(bookmarks_btn).on_hover_text("Manage bookmarks").clicked() {
+                                self.show_bookmarks = !self.show_bookmarks;
                             }
-                        }
-                    }
-                }
-                let after_edit_focus = ctx.memory(|m| m.has_focus(egui::Id::new("address_bar_input")));
-                if after_edit_focus {
-                    // Simple blinking caret indicator (timer via frame count modulus)
-                    let blink = (ctx.input(|i| i.time) * 2.0) as i32 % 2 == 0;
-                    if blink { ui.label("|"); } else { ui.label(" "); }
-                }
-                
-                ui.add_space(8.0);
-                
-                // Menu buttons with enhanced styling
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = 8.0;
-                    
-                    let bookmarks_btn = egui::Button::new(
-                        egui::RichText::new("� Bookmarks").color(NeonTheme::PRIMARY_TEXT)
-                    )
-                    .fill(if self.show_bookmarks { NeonTheme::NEON_PURPLE } else { NeonTheme::ELEVATED_BG })
-                    .stroke(egui::Stroke::new(1.0, NeonTheme::BORDER_COLOR));
-                    
-                    if ui.add(bookmarks_btn).on_hover_text("Manage bookmarks").clicked() {
-                        self.show_bookmarks = !self.show_bookmarks;
-                    }
-                    
-                    let settings_btn = egui::Button::new(
-                        egui::RichText::new("⚙️ Settings").color(NeonTheme::PRIMARY_TEXT)
-                    )
-                    .fill(if self.show_settings { NeonTheme::NEON_PURPLE } else { NeonTheme::ELEVATED_BG })
-                    .stroke(egui::Stroke::new(1.0, NeonTheme::BORDER_COLOR));
-                    
-                    if ui.add(settings_btn).on_hover_text("Browser settings").clicked() {
-                        self.show_settings = !self.show_settings;
-                    }
-                    
-                    let new_tab_btn = egui::Button::new(
-                        egui::RichText::new("➕ New Tab").color(NeonTheme::PRIMARY_TEXT)
-                    )
-                    .fill(NeonTheme::SUCCESS_COLOR)
-                    .stroke(egui::Stroke::new(0.0, egui::Color32::TRANSPARENT));
-                    
-                    if ui.add(new_tab_btn).on_hover_text("Open new tab (Cmd+T)").clicked() {
-                        self.create_new_tab();
-                    }
-                });
-                
-                ui.add_space(12.0);
+                            
+                            // Settings button
+                            let settings_btn = egui::Button::new(
+                                egui::RichText::new(format!("{} Settings", icons::NeonIcons::GEAR))
+                                    .size(13.0)
+                                    .color(if self.show_settings { NeonTheme::PRIMARY_TEXT } else { NeonTheme::SECONDARY_TEXT })
+                            )
+                            .fill(if self.show_settings { NeonTheme::BUTTON_PRIMARY } else { NeonTheme::BUTTON_IDLE })
+                            .stroke(Stroke::new(1.0, if self.show_settings { NeonTheme::NEON_CYAN } else { NeonTheme::BORDER_COLOR }))
+                            .rounding(Rounding::same(12.0));
+                            
+                            if ui.add(settings_btn).on_hover_text("Browser settings").clicked() {
+                                self.show_settings = !self.show_settings;
+                            }
+                            
+                            // New tab button with primary styling
+                            let new_tab_btn = egui::Button::new(
+                                egui::RichText::new(format!("{} New", icons::NeonIcons::PLUS))
+                                    .size(13.0)
+                                    .color(NeonTheme::PRIMARY_TEXT)
+                            )
+                            .fill(NeonTheme::SUCCESS_COLOR)
+                            .stroke(Stroke::new(0.0, Color32::TRANSPARENT))
+                            .rounding(Rounding::same(12.0));
+                            
+                            if ui.add(new_tab_btn).on_hover_text("Open new tab (Cmd+T)").clicked() {
+                                self.create_new_tab();
+                            }
+                        });
+                        
+                        ui.add_space(20.0);
+                    },
+                );
             });
-        });
         
-        // Tab bar with enhanced styling
+        // Handle navigation and address bar logic (simplified for now)
+        // TODO: Re-implement navigation action handling
+        
+        // Modern tab bar with enhanced styling
         egui::TopBottomPanel::top("tab_panel")
-            .exact_height(45.0)
+            .exact_height(50.0)
+            .frame(egui::Frame::none().fill(NeonTheme::PANEL_BG))
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
                     ui.add_space(8.0);
@@ -447,7 +513,7 @@ impl eframe::App for NeonSearchApp {
                                                     let phase_anim = (ctx.input(|i| i.time) * 6.0) as i32 % 4;
                                                     match phase_anim { 0 => "⠋", 1 => "⠙", 2 => "⠹", _ => "⠸" }
                                                 } else {
-                                                    "🌐"
+                                                    icons::NeonIcons::GLOBE_SIMPLE
                                                 };
                                                 ui.label(egui::RichText::new(favicon_text).color(tab_text_color));
                                                 
@@ -486,7 +552,7 @@ impl eframe::App for NeonSearchApp {
                                                 
                                                 // Close button with hover effect
                                                 let close_btn = egui::Button::new(
-                                                    egui::RichText::new("✕")
+                                                    egui::RichText::new(icons::NeonIcons::X)
                                                         .size(12.0)
                                                         .color(if is_active { egui::Color32::WHITE } else { NeonTheme::MUTED_TEXT })
                                                 )
@@ -614,7 +680,7 @@ impl eframe::App for NeonSearchApp {
                     // Panel header
                     ui.horizontal(|ui| {
                         ui.label(
-                            egui::RichText::new("📚 Bookmarks")
+                            egui::RichText::new(format!("{} Bookmarks", icons::NeonIcons::BOOKMARKS))
                                 .size(18.0)
                                 .color(NeonTheme::NEON_CYAN)
                                 .strong()
@@ -622,7 +688,7 @@ impl eframe::App for NeonSearchApp {
                         
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             let close_btn = egui::Button::new(
-                                egui::RichText::new("✕").color(NeonTheme::MUTED_TEXT)
+                                egui::RichText::new(icons::NeonIcons::X).color(NeonTheme::MUTED_TEXT)
                             )
                             .fill(egui::Color32::TRANSPARENT)
                             .stroke(egui::Stroke::NONE);
@@ -662,7 +728,10 @@ impl eframe::App for NeonSearchApp {
                     
                     ui.separator();
                     
-                    ui.label("🚧 Settings panel coming soon!");
+                    ui.label(
+                        egui::RichText::new(format!("{} Settings panel coming soon!", NeonIcons::WRENCH))
+                            .color(NeonTheme::WARNING_COLOR)
+                    );
                     ui.label("This will include:");
                     ui.label("• Theme customization");
                     ui.label("• Privacy settings");

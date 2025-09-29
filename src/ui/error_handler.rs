@@ -1,4 +1,5 @@
 use std::fmt;
+use crate::ui::NeonIcons;
 
 #[derive(Debug, Clone)]
 pub struct BrowserError {
@@ -330,30 +331,7 @@ impl BrowserError {
     }
 
     pub fn icon(&self) -> &'static str {
-        match self.error_type {
-            ErrorType::NetworkTimeout => "⏱️",
-            ErrorType::NetworkUnreachable => "🌐",
-            ErrorType::DnsResolutionFailed => "🔍",
-            ErrorType::ConnectionRefused => "🚫",
-            ErrorType::ConnectionReset => "🔄",
-            ErrorType::TlsHandshakeFailed => "🔒",
-            ErrorType::CertificateInvalid => "⚠️",
-            ErrorType::CertificateExpired => "📅",
-            ErrorType::TlsVersionMismatch => "🔐",
-            ErrorType::HttpBadRequest => "❌",
-            ErrorType::HttpUnauthorized => "🔐",
-            ErrorType::HttpForbidden => "⛔",
-            ErrorType::HttpNotFound => "❓",
-            ErrorType::HttpServerError => "🔥",
-            ErrorType::HttpRedirectLoop => "🔄",
-            ErrorType::ContentTooLarge => "📦",
-            ErrorType::ContentMalformed => "⚠️",
-            ErrorType::ContentUnsupported => "❌",
-            ErrorType::InvalidUrl => "🔗",
-            ErrorType::UnsupportedProtocol => "⚠️",
-            ErrorType::ResourceExhausted => "💾",
-            ErrorType::InternalError => "🐛",
-        }
+        NeonIcons::error_icon(&format!("{:?}", self.error_type))
     }
 
     pub fn color(&self) -> egui::Color32 {
