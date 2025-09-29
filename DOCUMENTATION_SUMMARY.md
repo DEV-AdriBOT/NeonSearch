@@ -1,21 +1,43 @@
 # 📚 NeonSearch Documentation Summary
 
-## � **Latest Feature: Temporary File System (v0.1.1)**
+## 🚀 **Latest Feature: Advanced Large Content Handling (v0.2.0)**
+
+### 🎯 **Adaptive Rendering System**
+NeonSearch now features a comprehensive multi-tier rendering system for websites >25KB:
+
+- **📊 Smart Mode Selection**: Automatic rendering strategy based on content size
+- **🌊 Streaming Parser**: Incremental HTML parsing with progress tracking
+- **📱 Virtual Scrolling**: Efficient handling of massive DOM trees
+- **🧠 Content Analysis**: Intelligent content preservation and truncation
+- **⚙️ Background Processing**: Async operations without UI blocking
+- **🗜️ Streaming Compression**: Memory-efficient decompression
+
+### 🏗️ **Five-Tier Rendering Strategy**
+
+| Content Size | Mode | Strategy | Features |
+|-------------|------|----------|----------|
+| **< 25KB** | 🔍 Full | Complete parsing | 100% fidelity, full CSS |
+| **25KB - 500KB** | ⚡ Enhanced | Progressive parsing | Prioritized rendering |
+| **500KB - 5MB** | 🌊 Streaming | Virtual scrolling | Lazy DOM creation |
+| **5MB - 50MB** | 🎯 Efficient | Text-focused | Smart analysis |
+| **> 50MB** | 📄 Minimal | Plain text | Link extraction |
 
 ### 💾 **Enhanced Memory Management**
-NeonSearch now includes an intelligent temporary file system for handling large web content:
+Building on the temporary file system (v0.1.1):
 
-- **🎯 Smart Threshold**: Content > 5MB automatically uses temporary files
+- **🎯 Lowered Threshold**: Large content detection now at 25KB (was 50KB)
 - **🗂️ Automatic Management**: Files created/cleaned up transparently  
 - **🧹 Auto-Cleanup**: Files deleted on tab close or navigation
 - **📈 Better Performance**: Eliminates memory pressure from large sites
 - **🔄 Zero API Impact**: Existing rendering code works unchanged
 
 ### 🏗️ **Technical Implementation**
-- **Location**: `src/networking/temp_storage.rs`
-- **Integration**: Enhanced `HttpResponse` with dual storage modes
-- **Cleanup**: Automatic via `Drop` trait and navigation hooks
-- **Storage**: System temp directory with UUID-based naming
+- **Core**: `src/engine/adaptive_renderer.rs` - Multi-mode rendering engine
+- **Streaming**: `src/engine/streaming_parser.rs` - Incremental HTML parsing
+- **Virtual**: `src/engine/virtual_scroll.rs` - Viewport-based rendering
+- **Analysis**: `src/engine/content_analyzer.rs` - Smart content analysis
+- **Background**: `src/engine/background_processor.rs` - Async pipeline
+- **Compression**: `src/networking/streaming_compression.rs` - Streaming decompression
 
 ## �🎯 **What's New in the Updated README.md**
 

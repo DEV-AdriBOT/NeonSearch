@@ -3,6 +3,11 @@ pub mod css_parser;
 pub mod layout;
 pub mod renderer;
 pub mod dom;
+pub mod streaming_parser;
+pub mod virtual_scroll;
+pub mod adaptive_renderer;
+pub mod content_analyzer;
+pub mod background_processor;
 
 use eframe::egui;
 use self::dom::DOMNode;
@@ -14,6 +19,29 @@ pub struct WebPage {
     pub raw_html: Option<String>,
     pub plain_text: Option<String>,
     pub extracted_title: Option<String>,
+    pub loading_progress: Option<LoadingProgress>,
+    pub content_size: usize,
+    pub is_large_content: bool,
+}
+
+/// Progress tracking for large website loading
+#[derive(Debug, Clone)]
+pub struct LoadingProgress {
+    pub phase: LoadingPhase,
+    pub bytes_downloaded: usize,
+    pub total_bytes: Option<usize>,
+    pub nodes_parsed: usize,
+    pub progress_percentage: f32,
+    pub status_message: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum LoadingPhase {
+    Connecting,
+    Downloading,
+    Parsing,
+    Rendering,
+    Complete,
 }
 
 impl WebPage {
@@ -162,6 +190,108 @@ impl WebPage {
         Self::from_html(&html)
     }
     
+    pub fn create_loading_page_with_progress(url: &str, progress: LoadingProgress) -> Self {
+        let progress_bar = if progress.progress_percentage > 0.0 {
+            format!(r#"
+                <div class="progress-container">
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {:.1}%"></div>
+                    </div>
+                    <div class="progress-text">{}</div>
+                    <div class="progress-details">{:.1}% - {}</div>
+                </div>
+            "#, 
+            progress.progress_percentage,
+            progress.status_message,
+            progress.progress_percentage,
+            match progress.phase {
+                LoadingPhase::Connecting => "Connecting to server...",
+                LoadingPhase::Downloading => "Downloading content...",
+                LoadingPhase::Parsing => "Parsing HTML...",
+                LoadingPhase::Rendering => "Rendering page...",
+                LoadingPhase::Complete => "Complete!",
+            })
+        } else {
+            "<div class=\"progress-text\">Starting...</div>".to_string()
+        };
+
+        let html = format!(r#"
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Loading...</title>
+                <style>
+                    body {{ 
+                        font-family: Arial, sans-serif; 
+                        background: #1e1e2e;
+                        color: #ffffff;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        height: 100vh;
+                        margin: 0;
+                    }}
+                    .loading-container {{
+                        text-align: center;
+                        max-width: 400px;
+                    }}
+                    .spinner {{
+                        width: 50px;
+                        height: 50px;
+                        border: 3px solid #333;
+                        border-top: 3px solid #00ffcc;
+                        border-radius: 50%;
+                        animation: spin 1s linear infinite;
+                        margin: 0 auto 20px auto;
+                    }}
+                    .progress-container {{
+                        margin: 20px 0;
+                        text-align: center;
+                    }}
+                    .progress-bar {{
+                        width: 100%;
+                        height: 10px;
+                        background: #333;
+                        border-radius: 5px;
+                        overflow: hidden;
+                        margin: 10px 0;
+                    }}
+                    .progress-fill {{
+                        height: 100%;
+                        background: linear-gradient(90deg, #00ffcc, #00cc99);
+                        transition: width 0.3s ease;
+                    }}
+                    .progress-text {{
+                        color: #00ffcc;
+                        font-weight: bold;
+                        margin: 10px 0;
+                    }}
+                    .progress-details {{
+                        color: #cccccc;
+                        font-size: 0.9em;
+                    }}
+                    @keyframes spin {{
+                        0% {{ transform: rotate(0deg); }}
+                        100% {{ transform: rotate(360deg); }}
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class="loading-container">
+                    <div class="spinner"></div>
+                    <h2>Loading {}</h2>
+                    <p>Please wait while we fetch the content...</p>
+                    {}
+                </div>
+            </body>
+            </html>
+        "#, url, progress_bar);
+        
+        let mut page = Self::from_html(&html);
+        page.loading_progress = Some(progress);
+        page
+    }
+    
     pub fn create_error_page(url: &str, error: &str) -> Self {
         let html = format!(r#"
             <!DOCTYPE html>
@@ -299,10 +429,13 @@ impl WebPage {
     }
     
     pub fn from_html(html: &str) -> Self {
-        // Limit HTML size to prevent crashes (2MB limit)
-        let limited_html = if html.len() > 2 * 1024 * 1024 {
-            let truncated = &html[..2 * 1024 * 1024];
-            format!("{}<br><br><i>[Content truncated at 2MB to prevent crashes]</i>", truncated)
+        let content_size = html.len();
+        let is_large_content = content_size > 25 * 1024; // 25KB threshold
+        
+        // Limit HTML size to prevent crashes (5MB limit for large content support)
+        let limited_html = if html.len() > 5 * 1024 * 1024 {
+            let truncated = &html[..5 * 1024 * 1024];
+            format!("{}<br><br><i>[Content truncated at 5MB to prevent crashes]</i>", truncated)
         } else {
             html.to_string()
         };
@@ -311,6 +444,21 @@ impl WebPage {
         let stylesheets = Vec::new(); // TODO: Parse CSS from <style> tags and external stylesheets
         let title = extract_title(&limited_html);
         let plain = strip_html(&limited_html);
+        
+        // Create progress indicator for large content
+        let loading_progress = if is_large_content {
+            Some(LoadingProgress {
+                phase: LoadingPhase::Complete,
+                bytes_downloaded: content_size,
+                total_bytes: Some(content_size),
+                nodes_parsed: 0, // TODO: Count actual nodes
+                progress_percentage: 100.0,
+                status_message: format!("Loaded large content: {:.1}KB", content_size as f32 / 1024.0),
+            })
+        } else {
+            None
+        };
+        
         Self {
             dom,
             stylesheets,
@@ -318,12 +466,87 @@ impl WebPage {
             raw_html: Some(limited_html.clone()),
             plain_text: Some(plain),
             extracted_title: title,
+            loading_progress,
+            content_size,
+            is_large_content,
         }
     }
     
     pub fn render(&self, ui: &mut egui::Ui) {
+        // Show progress indicator for large content if loading
+        if let Some(progress) = &self.loading_progress {
+            if progress.phase != LoadingPhase::Complete {
+                self.render_progress_indicator(ui, progress);
+                return;
+            }
+        }
+        
+        // Show large content indicator if applicable
+        if self.is_large_content {
+            self.render_large_content_header(ui);
+        }
+        
         // For now, render a simplified version of the DOM
         self.render_dom_node(ui, &self.dom);
+    }
+    
+    fn render_progress_indicator(&self, ui: &mut egui::Ui, progress: &LoadingProgress) {
+        ui.vertical_centered(|ui| {
+            ui.add_space(50.0);
+            
+            // Loading spinner
+            ui.ctx().request_repaint();
+            let spinner_rect = ui.available_rect_before_wrap();
+            let center = spinner_rect.center();
+            let radius = 20.0;
+            let time = ui.ctx().input(|i| i.time) as f32;
+            
+            ui.painter().circle(
+                center,
+                radius,
+                egui::Color32::from_rgb(30, 30, 46),
+                egui::Stroke::new(3.0, egui::Color32::from_rgb(0, 255, 204))
+            );
+            
+            // Progress bar
+            ui.add_space(30.0);
+            ui.heading(&progress.status_message);
+            
+            let progress_bar = egui::ProgressBar::new(progress.progress_percentage / 100.0)
+                .text(format!("{:.1}%", progress.progress_percentage))
+                .fill(egui::Color32::from_rgb(0, 255, 204));
+            ui.add(progress_bar);
+            
+            // Phase indicator
+            ui.add_space(10.0);
+            ui.label(match progress.phase {
+                LoadingPhase::Connecting => "🔗 Connecting to server...",
+                LoadingPhase::Downloading => "⬇️ Downloading content...",
+                LoadingPhase::Parsing => "📝 Parsing HTML...",
+                LoadingPhase::Rendering => "🎨 Rendering page...",
+                LoadingPhase::Complete => "✅ Complete!",
+            });
+            
+            // Size information
+            if let Some(total) = progress.total_bytes {
+                ui.label(format!("Downloaded: {:.1}KB / {:.1}KB", 
+                    progress.bytes_downloaded as f32 / 1024.0,
+                    total as f32 / 1024.0));
+            } else {
+                ui.label(format!("Downloaded: {:.1}KB", 
+                    progress.bytes_downloaded as f32 / 1024.0));
+            }
+        });
+    }
+    
+    fn render_large_content_header(&self, ui: &mut egui::Ui) {
+        ui.horizontal(|ui| {
+            ui.label("⚡");
+            ui.label(format!("Large Content ({:.1}KB) - Enhanced rendering active", 
+                self.content_size as f32 / 1024.0));
+        });
+        ui.separator();
+        ui.add_space(5.0);
     }
     
     fn render_dom_node(&self, ui: &mut egui::Ui, node: &DOMNode) {

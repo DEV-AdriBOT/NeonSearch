@@ -5,6 +5,7 @@ pub mod manual_client;
 pub mod image_loader;
 pub mod performance;
 pub mod temp_storage;
+pub mod streaming_compression;
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};

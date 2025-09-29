@@ -214,3 +214,43 @@ pub fn build_layout_tree(root: &StyledNode) -> LayoutBox {
     
     root_box
 }
+
+/// Layout engine for processing DOM trees and computing layout
+#[derive(Debug)]
+pub struct LayoutEngine {
+    viewport_width: f32,
+    viewport_height: f32,
+}
+
+impl LayoutEngine {
+    /// Create a new layout engine
+    pub fn new(viewport_width: f32, viewport_height: f32) -> Self {
+        Self {
+            viewport_width,
+            viewport_height,
+        }
+    }
+
+    /// Compute layout for a styled node tree
+    pub fn layout(&self, styled_root: &StyledNode) -> LayoutBox {
+        let mut layout_root = build_layout_tree(styled_root);
+        layout_root.layout(Rect {
+            x: 0.0,
+            y: 0.0,
+            width: self.viewport_width,
+            height: self.viewport_height,
+        });
+        layout_root
+    }
+
+    /// Update viewport dimensions
+    pub fn set_viewport(&mut self, width: f32, height: f32) {
+        self.viewport_width = width;
+        self.viewport_height = height;
+    }
+
+    /// Get current viewport dimensions
+    pub fn get_viewport(&self) -> (f32, f32) {
+        (self.viewport_width, self.viewport_height)
+    }
+}
