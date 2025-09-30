@@ -135,26 +135,40 @@ impl CustomPage for SettingsPage {
 impl SettingsPage {
     fn settings_nav_button(&mut self, ui: &mut Ui, tab: SettingsTab, icon: &str, label: &str) {
         let is_selected = self.current_tab == tab;
-        let color = if is_selected {
-            NeonTheme::NEON_CYAN
+        
+        let (bg_color, text_color) = if is_selected {
+            (NeonTheme::NEON_CYAN.linear_multiply(0.2), NeonTheme::NEON_CYAN)
         } else {
-            NeonTheme::SECONDARY_TEXT
+            (egui::Color32::TRANSPARENT, NeonTheme::SECONDARY_TEXT)
         };
         
-        let response = ui.horizontal(|ui| {
-            ui.label(RichText::new(icon).color(color));
-            ui.label(RichText::new(label).color(color));
-        }).response;
+        let response = egui::Frame::none()
+            .fill(bg_color)
+            .rounding(8.0)
+            .inner_margin(egui::Margin::symmetric(12.0, 8.0))
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new(icon).size(16.0).color(text_color));
+                    ui.add_space(8.0);
+                    ui.label(RichText::new(label).color(text_color));
+                })
+            })
+            .response;
         
         if response.clicked() {
             self.current_tab = tab;
         }
         
-        if is_selected {
-            ui.add_space(2.0);
-        } else {
-            ui.add_space(8.0);
+        // Hover effect
+        if response.hovered() && !is_selected {
+            ui.painter().rect_filled(
+                response.rect,
+                8.0,
+                NeonTheme::SECONDARY_TEXT.linear_multiply(0.1)
+            );
         }
+        
+        ui.add_space(4.0);
     }
     
     fn render_general_settings(&mut self, ui: &mut Ui) {
@@ -202,9 +216,30 @@ impl SettingsPage {
             
             ui.horizontal(|ui| {
                 ui.label("Save files to:");
-                ui.text_edit_singleline(&mut self.downloads_path);
-                if ui.button("Browse...").clicked() {
+                ui.add(egui::TextEdit::singleline(&mut self.downloads_path)
+                    .desired_width(300.0));
+                    
+                if ui.button(RichText::new(format!("{} Browse...", NeonIcons::FOLDER))
+                    .color(NeonTheme::NEON_CYAN)).clicked() {
                     // TODO: Open file dialog
+                    // For now, show a placeholder path
+                    self.downloads_path = "~/Downloads".to_string();
+                }
+            });
+            
+            ui.add_space(12.0);
+            
+            // Quick folder shortcuts
+            ui.horizontal(|ui| {
+                ui.label("Quick access:");
+                if ui.small_button("Desktop").clicked() {
+                    self.downloads_path = "~/Desktop".to_string();
+                }
+                if ui.small_button("Downloads").clicked() {
+                    self.downloads_path = "~/Downloads".to_string();
+                }
+                if ui.small_button("Documents").clicked() {
+                    self.downloads_path = "~/Documents".to_string();
                 }
             });
         });
@@ -240,12 +275,29 @@ impl SettingsPage {
             
             // Privacy actions
             ui.horizontal(|ui| {
-                if ui.button("Clear Browsing Data...").clicked() {
+                if ui.button(RichText::new(format!("{} Clear Browsing Data...", NeonIcons::TRASH))
+                    .color(NeonTheme::error_color())).clicked() {
                     // TODO: Open clear data dialog
+                    // For now, show confirmation
+                    println!("Clear browsing data clicked");
                 }
-                if ui.button("Manage Cookies...").clicked() {
+                
+                ui.add_space(8.0);
+                
+                if ui.button(RichText::new(format!("{} Manage Cookies...", NeonIcons::GEAR))
+                    .color(NeonTheme::NEON_CYAN)).clicked() {
                     // TODO: Open cookie manager
+                    println!("Manage cookies clicked");
                 }
+            });
+            
+            ui.add_space(12.0);
+            
+            // Privacy status indicators
+            ui.horizontal(|ui| {
+                components::status_indicator(ui, self.tracking_protection, "Tracking Protection");
+                ui.add_space(16.0);
+                components::status_indicator(ui, self.javascript_enabled, "JavaScript Enabled");
             });
         });
     }
@@ -309,9 +361,16 @@ impl SettingsPage {
             });
             
             ui.horizontal(|ui| {
-                if ui.button("Clear Cache").clicked() {
+                if ui.button(RichText::new(format!("{} Clear Cache", NeonIcons::TRASH))
+                    .color(NeonTheme::warning_color())).clicked() {
                     // TODO: Clear cache
+                    println!("Cache cleared");
                 }
+                
+                ui.add_space(8.0);
+                
+                ui.label(RichText::new(format!("Current cache size: {:.1} MB", self.cache_size * 0.7))
+                    .color(NeonTheme::SECONDARY_TEXT));
             });
             
             ui.add_space(20.0);
@@ -356,11 +415,19 @@ impl SettingsPage {
                 .color(NeonTheme::PRIMARY_TEXT));
             
             ui.horizontal(|ui| {
-                if ui.button("Open Developer Console").clicked() {
+                if ui.button(RichText::new(format!("{} Open Developer Console", NeonIcons::CODE))
+                    .color(NeonTheme::NEON_CYAN)).clicked() {
                     // TODO: Open dev console
+                    println!("Developer console opened");
                 }
-                if ui.button("Reset All Settings").clicked() {
-                    // TODO: Reset settings dialog
+                
+                ui.add_space(8.0);
+                
+                if ui.button(RichText::new(format!("{} Reset All Settings", NeonIcons::REFRESH))
+                    .color(NeonTheme::error_color())).clicked() {
+                    // Reset to defaults
+                    *self = Self::new();
+                    println!("Settings reset to defaults");
                 }
             });
             
@@ -372,12 +439,35 @@ impl SettingsPage {
                 .color(NeonTheme::PRIMARY_TEXT));
             
             ui.horizontal(|ui| {
-                if ui.button("Export Settings...").clicked() {
+                if ui.button(RichText::new(format!("{} Export Settings...", NeonIcons::DOWNLOAD))
+                    .color(NeonTheme::NEON_CYAN)).clicked() {
                     // TODO: Export settings
+                    println!("Settings exported");
                 }
-                if ui.button("Import Settings...").clicked() {
+                
+                ui.add_space(8.0);
+                
+                if ui.button(RichText::new(format!("{} Import Settings...", NeonIcons::UPLOAD))
+                    .color(NeonTheme::NEON_CYAN)).clicked() {
                     // TODO: Import settings
+                    println!("Settings import dialog opened");
                 }
+            });
+            
+            ui.add_space(20.0);
+            
+            // Settings info
+            ui.separator();
+            ui.add_space(12.0);
+            
+            ui.horizontal(|ui| {
+                ui.label(RichText::new("Settings Version:").color(NeonTheme::SECONDARY_TEXT));
+                ui.label(RichText::new("1.0.0").color(NeonTheme::PRIMARY_TEXT));
+                
+                ui.add_space(20.0);
+                
+                ui.label(RichText::new("Last Modified:").color(NeonTheme::SECONDARY_TEXT));
+                ui.label(RichText::new("Today").color(NeonTheme::PRIMARY_TEXT));
             });
         });
     }

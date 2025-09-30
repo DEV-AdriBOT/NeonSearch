@@ -40,10 +40,22 @@ impl NeonIcons {
     
     // Action icons - using simple symbols
     pub const PLAY: &'static str = "▶";
+    pub const PAUSE: &'static str = "⏸";
     pub const PLUS: &'static str = "+";
     pub const MINUS: &'static str = "-";
     pub const X: &'static str = "×";
+    pub const CROSS: &'static str = "✗";
     pub const WRENCH: &'static str = "🔧";
+    pub const REFRESH: &'static str = "↻";
+    pub const DOWNLOAD: &'static str = "⬇";
+    pub const UPLOAD: &'static str = "⬆";
+    pub const SEARCH: &'static str = "🔍";
+    pub const FOLDER: &'static str = "📁";
+    pub const CLOCK: &'static str = "🕐";
+    pub const CODE: &'static str = "⌨";
+    pub const CHECK: &'static str = "✓";
+    pub const HEART: &'static str = "♡";
+    pub const STAR: &'static str = "★";
 }
 
 impl NeonIcons {
