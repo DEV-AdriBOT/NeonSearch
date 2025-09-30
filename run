@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# NeonSearch Universal Run Script
+# Automatically detects OS and runs the appropriate run script
+
+# Detect OS and run appropriate script
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS
+    echo "🍎 macOS detected - running run.sh"
+    exec ./run.sh "$@"
+elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    # Linux
+    echo "🐧 Linux detected - running run.sh"
+    exec ./run.sh "$@"
+elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+    # Windows (Git Bash/MSYS2)
+    echo "🪟 Windows detected - running run.bat"
+    exec ./run.bat
+else
+    echo "❌ Unsupported operating system: $OSTYPE"
+    echo "Please run the appropriate script manually:"
+    echo "  - Unix/macOS/Linux: ./run.sh"
+    echo "  - Windows: run.bat"
+    exit 1
+fi

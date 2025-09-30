@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# NeonSearch Universal Dependency Installer
+# Automatically detects OS and runs the appropriate dependency installation script
+
+# Detect OS and run appropriate script
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS
+    echo "🍎 macOS detected - running dependencies.sh"
+    exec ./dependencies.sh "$@"
+elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    # Linux
+    echo "🐧 Linux detected - running dependencies.sh"  
+    exec ./dependencies.sh "$@"
+elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+    # Windows (Git Bash/MSYS2)
+    echo "🪟 Windows detected - running dependencies.bat"
+    exec ./dependencies.bat
+else
+    echo "❌ Unsupported operating system: $OSTYPE"
+    echo "Please run the appropriate script manually:"
+    echo "  - Unix/macOS/Linux: ./dependencies.sh"
+    echo "  - Windows: dependencies.bat"
+    exit 1
+fi

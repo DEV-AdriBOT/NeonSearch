@@ -5,6 +5,7 @@
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey.svg)](README.md)
+[![Build System](https://img.shields.io/badge/build-cross--platform-green.svg)](BUILD_SYSTEM.md)
 
 ## 🚀 Overview
 
@@ -18,6 +19,7 @@
 - 🎨 **Modern UI** - Beautiful dark theme with neon aesthetics
 - 🌐 **Real Websites** - Successfully handles Google, GitHub, and more
 - 📱 **Responsive** - Never freezes, even on large sites
+- 🛠️ **Cross-Platform** - One-command setup on macOS, Linux, and Windows
 
 ## ✅ Current Status: **FULLY FUNCTIONAL**
 
@@ -69,36 +71,82 @@ NeonSearch implements a sophisticated, multi-layered architecture:
 - **⏱️ Timeout Controls** - Comprehensive timeout handling at all levels
 - **📈 Background Tasks** - Async processing for non-blocking operations
 
-## 🛠️ Installation & Usage
+## 🛠️ Installation & Setup
 
-### 📋 Prerequisites
-- **Rust 1.70+** - Install from [rustup.rs](https://rustup.rs/)
-- **macOS 10.15+**, **Windows 10+**, or **Linux** (Ubuntu 18.04+)
-- **Git** for cloning the repository
+### � **Quick Start (Cross-Platform)**
 
-### ⚡ Quick Start
+NeonSearch includes a comprehensive cross-platform build system that works on **macOS**, **Linux**, and **Windows**:
+
 ```bash
-# Clone the repository
+# 1. Clone the repository
 git clone https://github.com/neondev/neonsearch.git
 cd NeonSearch
 
-# Build optimized release version
-cargo build --release
+# 2. Install all dependencies (Rust, system libs, dev tools)
+./setup
 
-# Run NeonSearch
-./target/release/neonsearch
+# 3. Build NeonSearch for your OS
+./build
 
-# Or for development
-cargo run
+# 4. Launch the browser
+./run
 ```
 
-### 🔧 Build Scripts
-```bash
-# Use the convenient build script
-./build.sh          # Builds release version
+### 🔧 **Universal Build Commands**
 
-# Use the run script  
-./run.sh            # Builds and runs the browser
+These commands automatically detect your operating system and run the appropriate scripts:
+
+- **`./setup`** - Complete dependency installation from scratch
+- **`./build`** - OS-optimized build with proper configuration
+- **`./run`** - Launch browser with platform-specific settings
+
+### 📋 **Prerequisites**
+
+The setup script automatically installs everything needed, but you can also install manually:
+
+#### All Platforms
+- **Rust 1.70+** - Installed automatically by setup script
+- **Git** - For cloning the repository
+
+#### Platform-Specific Dependencies (Auto-Installed)
+- **macOS**: Homebrew, Command Line Tools, Graphics libraries (glfw3)
+- **Linux**: Build tools, X11/Wayland libraries, Graphics dependencies  
+- **Windows**: Visual Studio Build Tools verification, Windows SDK
+
+### 🔨 **Manual Installation (Alternative)**
+
+If you prefer manual installation:
+
+```bash
+# Install Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Clone and build
+git clone https://github.com/neondev/neonsearch.git
+cd NeonSearch
+cargo build --release
+
+# Run
+./target/release/neonsearch  # Unix/macOS/Linux
+./target/release/neonsearch.exe  # Windows
+```
+
+### �️ **Platform-Specific Scripts**
+
+For advanced users who want direct control:
+
+#### Unix/Linux/macOS
+```bash
+./dependencies.sh    # Install dependencies
+./build.sh          # Build with Unix optimizations  
+./run.sh            # Launch with Unix settings
+```
+
+#### Windows
+```batch
+dependencies.bat     # Install dependencies
+build.bat           # Build with Windows optimizations
+run.bat             # Launch with Windows settings
 ```
 
 ### 📦 Core Dependencies
@@ -191,6 +239,16 @@ cargo run
 - [x] **Response Caching** - LRU cache with intelligent eviction
 - [x] **Background Tasks** - Async image loading and cleanup
 - [x] **UI Responsiveness** - Never-blocking user interface
+
+#### 🛠️ **Cross-Platform Build System (NEW)**
+- [x] **Universal Scripts** - Auto-detect OS and run appropriate build scripts
+- [x] **Complete Setup** - One-command installation of all dependencies
+- [x] **OS Optimization** - Platform-specific build flags and configurations
+- [x] **Smart Binary Management** - Correct executables and naming per platform
+- [x] **Dependency Management** - Automatic installation of Rust, system libs, dev tools
+- [x] **Error Handling** - Comprehensive error messages and recovery suggestions
+- [x] **Progress Feedback** - Visual progress indicators and build status
+- [x] **Developer Friendly** - Easy setup for contributors on any platform
 
 ### 🚀 **Advanced Capabilities**
 

@@ -834,6 +834,42 @@ pie title Testing Distribution
 
 ### 📦 Build & Deployment
 
+#### 🛠️ **Cross-Platform Build System (NEW)**
+
+NeonSearch includes a comprehensive cross-platform build system that works seamlessly on **macOS**, **Linux**, and **Windows**:
+
+```bash
+# Universal commands (auto-detect OS)
+./setup      # Complete dependency installation
+./build      # OS-optimized build process  
+./run        # Platform-aware browser launch
+```
+
+**Key Features:**
+- **🔍 OS Auto-Detection** - Automatically detects macOS, Linux, Windows
+- **📦 Complete Setup** - One-command installation of all dependencies
+- **⚙️ OS Optimization** - Platform-specific build flags and configurations
+- **🔧 Smart Binary Management** - Correct executable names and extensions per platform
+- **🛠️ Developer Friendly** - Clear error messages and progress feedback
+
+#### Platform-Specific Scripts
+
+**Unix/Linux/macOS (.sh scripts):**
+```bash
+./dependencies.sh    # Install Rust, system deps, dev tools
+./build.sh          # Build with Unix/macOS optimizations
+./run.sh            # Launch with Unix/macOS settings
+```
+
+**Windows (.bat scripts):**
+```batch
+dependencies.bat     # Install dependencies on Windows
+build.bat           # Build with Windows optimizations
+run.bat             # Launch with Windows settings
+```
+
+#### Build Configurations
+
 ```bash
 # Development build (debug)
 cargo build
@@ -849,6 +885,28 @@ cargo build --target x86_64-unknown-linux-gnu
 # Performance profiling
 cargo build --release --features profiling
 ```
+
+#### Dependency Management
+
+The build system automatically installs:
+
+**All Platforms:**
+- Rust (latest stable) with rustfmt and clippy
+- Cargo tools (cargo-watch, cargo-edit, cargo-audit)
+- Build essentials (compilers, cmake, pkg-config)
+
+**macOS Specific:**
+- Homebrew (if not installed)
+- Graphics libraries (glfw3 for egui)
+- Command line tools
+
+**Linux Specific:**
+- Graphics/windowing libraries (X11, Wayland support)
+- Distribution-specific packages (apt, yum, dnf, pacman)
+
+**Windows Specific:**
+- Visual Studio Build Tools verification
+- Windows SDK checking
 
 ### 🔍 Code Quality Tools
 

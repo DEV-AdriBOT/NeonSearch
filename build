@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# NeonSearch Universal Build Script
+# Automatically detects OS and runs the appropriate build script
+
+# Detect OS and run appropriate script
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS
+    echo "🍎 macOS detected - running build.sh"
+    exec ./build.sh "$@"
+elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    # Linux
+    echo "🐧 Linux detected - running build.sh"
+    exec ./build.sh "$@"
+elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" ]]; then
+    # Windows (Git Bash/MSYS2)
+    echo "🪟 Windows detected - running build.bat"
+    exec ./build.bat
+else
+    echo "❌ Unsupported operating system: $OSTYPE"
+    echo "Please run the appropriate script manually:"
+    echo "  - Unix/macOS/Linux: ./build.sh"
+    echo "  - Windows: build.bat"
+    exit 1
+fi
