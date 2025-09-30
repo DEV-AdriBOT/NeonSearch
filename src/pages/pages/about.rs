@@ -184,7 +184,7 @@ impl CustomPage for AboutPage {
                 
                 ui.add_space(20.0);
                 
-                ui.label(RichText::new("© 2024 NeonDev™. All rights reserved.")
+                ui.label(RichText::new("© 2025 NeonDev™. All rights reserved.")
                     .size(14.0)
                     .color(NeonTheme::SECONDARY_TEXT));
                 

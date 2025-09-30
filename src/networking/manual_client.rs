@@ -65,7 +65,10 @@ impl ManualHttpClient {
         let mut phases = Vec::new();
 
         // Handle common URL corrections
-        if !current_url.starts_with("http://") && !current_url.starts_with("https://") {
+        if !current_url.starts_with("http://") && 
+           !current_url.starts_with("https://") && 
+           !current_url.starts_with("neon://") && 
+           !current_url.starts_with("about:") {
             current_url = format!("https://{}", current_url);
         }
 

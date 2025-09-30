@@ -409,7 +409,8 @@ impl eframe::App for NeonSearchApp {
                                             // Normalize URL - add https:// if no protocol is specified
                                             let normalized_url = if !navigate_url.starts_with("http://") && 
                                                                     !navigate_url.starts_with("https://") && 
-                                                                    !navigate_url.starts_with("about:") {
+                                                                    !navigate_url.starts_with("about:") &&
+                                                                    !navigate_url.starts_with("neon://") {
                                                 format!("https://{}", navigate_url)
                                             } else {
                                                 navigate_url
