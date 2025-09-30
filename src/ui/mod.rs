@@ -7,6 +7,7 @@ use crate::networking::HttpResponse;
 use crate::networking::cookie_manager::CookieManager;
 use crate::networking::manual_client::{ManualHttpClient, FetchPhase};
 use crate::networking::image_loader::ImageCache;
+use crate::pages::PageRouter;
 
 mod browser_tab;
 mod address_bar;
@@ -15,7 +16,7 @@ mod bookmarks;
 pub mod theme;
 mod error_handler;
 mod dev_console;
-mod icons;
+pub mod icons;
 
 pub use browser_tab::BrowserTab;
 pub use address_bar::AddressBar;
@@ -33,6 +34,7 @@ pub struct NeonSearchApp {
     navigation_bar: NavigationBar,
     bookmark_manager: BookmarkManager,
     dev_console: DevConsole,
+    page_router: PageRouter,
     show_bookmarks: bool,
     show_settings: bool,
     network_receiver: Receiver<(Uuid, Result<HttpResponse, String>)>,
@@ -59,6 +61,7 @@ impl NeonSearchApp {
             navigation_bar: NavigationBar::new(),
             bookmark_manager: BookmarkManager::new(),
             dev_console: DevConsole::new(),
+            page_router: PageRouter::new(),
             show_bookmarks: false,
             show_settings: false,
             network_receiver,
@@ -103,6 +106,22 @@ impl NeonSearchApp {
     }
     
     pub fn fetch_url(&self, tab_id: Uuid, url: String) {
+        // Check if this is a custom page first
+        if self.page_router.can_handle(&url) {
+            // Handle custom pages immediately without network request
+            let sender = self.network_sender.clone();
+            let page_title = self.page_router.get_page_title(&url).unwrap_or("Custom Page".to_string());
+            
+            // Create a fake response for custom pages
+            let headers = std::collections::HashMap::new();
+            let content = format!("<html><head><title>{}</title></head><body><!-- CUSTOM_PAGE --></body></html>", page_title);
+            let response = HttpResponse::new(200, "OK".to_string(), headers, content.into_bytes());
+            
+            // Send immediately
+            let _ = sender.send((tab_id, Ok(response)));
+            return;
+        }
+        
         let sender = self.network_sender.clone();
         let manual = self.manual_client.clone();
         let cookie_header;
@@ -593,16 +612,39 @@ impl eframe::App for NeonSearchApp {
                     let mut current_url = String::new();
                     
                     if let Some(active_tab) = self.tabs.get_mut(&active_id) {
-                        // Add a subtle content frame
-                        egui::Frame::none()
-                            .fill(NeonTheme::CARD_BG)
-                            .rounding(egui::Rounding::same(12.0))
-                            .stroke(egui::Stroke::new(1.0, NeonTheme::BORDER_COLOR))
-                            .inner_margin(egui::Margin::same(16.0))
-                            .show(ui, |ui| {
-                                needs_fetch = active_tab.show(ui);
-                                current_url = active_tab.url.clone();
-                            });
+                        current_url = active_tab.url.clone();
+                        
+                        // Check if this is a custom page
+                        if self.page_router.can_handle(&current_url) {
+                            // Render custom page directly
+                            egui::Frame::none()
+                                .fill(NeonTheme::CARD_BG)
+                                .rounding(egui::Rounding::same(12.0))
+                                .stroke(egui::Stroke::new(1.0, NeonTheme::BORDER_COLOR))
+                                .inner_margin(egui::Margin::same(16.0))
+                                .show(ui, |ui| {
+                                    egui::ScrollArea::vertical()
+                                        .auto_shrink([false; 2])
+                                        .show(ui, |ui| {
+                                            self.page_router.render_page(&current_url, ui, ctx);
+                                        });
+                                });
+                            
+                            // Update tab title if needed
+                            if let Some(page_title) = self.page_router.get_page_title(&current_url) {
+                                active_tab.title = page_title;
+                            }
+                        } else {
+                            // Render normal web page
+                            egui::Frame::none()
+                                .fill(NeonTheme::CARD_BG)
+                                .rounding(egui::Rounding::same(12.0))
+                                .stroke(egui::Stroke::new(1.0, NeonTheme::BORDER_COLOR))
+                                .inner_margin(egui::Margin::same(16.0))
+                                .show(ui, |ui| {
+                                    needs_fetch = active_tab.show(ui);
+                                });
+                        }
                     }
                     
                     if needs_fetch {

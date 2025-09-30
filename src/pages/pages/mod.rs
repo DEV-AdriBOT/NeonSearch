@@ -1,0 +1,21 @@
+pub mod about;
+pub mod settings;
+pub mod history;
+pub mod bookmarks;
+pub mod developer;
+pub mod performance;
+pub mod security;
+pub mod downloads;
+pub mod extensions;
+pub mod experiments;
+
+pub use about::AboutPage;
+pub use settings::SettingsPage;
+pub use history::HistoryPage;
+pub use bookmarks::BookmarksPage;
+pub use developer::DeveloperPage;
+pub use performance::PerformancePage;
+pub use security::SecurityPage;
+pub use downloads::DownloadsPage;
+pub use extensions::ExtensionsPage;
+pub use experiments::ExperimentsPage;

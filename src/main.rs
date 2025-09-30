@@ -4,6 +4,7 @@ pub mod ui;
 pub mod engine;
 pub mod js;
 pub mod security;
+pub mod pages;
 
 use eframe::egui;
 use log::info;
