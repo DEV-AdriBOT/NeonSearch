@@ -178,6 +178,7 @@ impl AddressBar {
         if input.starts_with("http://") || 
            input.starts_with("https://") || 
            input.starts_with("about:") ||
+           input.starts_with("neon://") ||
            input.contains('.') {
             self.current_url = input.clone();
             input
@@ -196,16 +197,38 @@ impl AddressBar {
         self.suggestions.clear();
         
         if !self.staged_input.is_empty() {
-            // Add some common suggestions
-            if "about:home".starts_with(&self.staged_input.to_lowercase()) {
+            let input_lower = self.staged_input.to_lowercase();
+            
+            // Add about: page suggestions
+            if "about:home".starts_with(&input_lower) {
                 self.suggestions.push("about:home".to_string());
             }
-            if "about:blank".starts_with(&self.staged_input.to_lowercase()) {
+            if "about:blank".starts_with(&input_lower) {
                 self.suggestions.push("about:blank".to_string());
             }
             
-            // Add search suggestion
-            if !self.staged_input.contains("://") {
+            // Add neon:// page suggestions
+            let neon_pages = [
+                "neon://about",
+                "neon://settings", 
+                "neon://history",
+                "neon://bookmarks",
+                "neon://downloads",
+                "neon://developer",
+                "neon://performance",
+                "neon://security",
+                "neon://extensions",
+                "neon://experiments"
+            ];
+            
+            for page in &neon_pages {
+                if page.starts_with(&input_lower) {
+                    self.suggestions.push(page.to_string());
+                }
+            }
+            
+            // Add search suggestion if not a URL-like input
+            if !self.staged_input.contains("://") && !self.staged_input.starts_with("about:") {
                 self.suggestions.push(format!("Search for '{}'", self.staged_input));
             }
         }

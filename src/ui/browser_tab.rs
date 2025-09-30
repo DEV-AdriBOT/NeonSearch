@@ -2,6 +2,7 @@ use eframe::egui;
 use crate::engine::WebPage;
 use crate::networking::HttpResponse;
 use crate::ui::{NeonTheme, NeonIcons};
+use crate::pages::{PageRouter, CustomPage};
 
 pub struct BrowserTab {
     pub title: String,
@@ -94,6 +95,23 @@ impl BrowserTab {
                 self.loading = false;
                 false // No network request needed
             }
+            url if url.starts_with("neon://") => {
+                // Handle neon:// protocol custom pages
+                let router = PageRouter::new();
+                if router.can_handle(&self.url) {
+                    let html_content = self.generate_custom_page_html(&self.url);
+                    self.title = router.get_page_title(&self.url).unwrap_or_else(|| "Custom Page".to_string());
+                    self.web_page = Some(WebPage::create_simple_text_page(&html_content, &self.url));
+                    self.loading = false;
+                    false // No network request needed
+                } else {
+                    // Unknown neon:// URL
+                    self.title = "Page Not Found".to_string();
+                    self.web_page = Some(WebPage::create_error_page(&self.url, "Unknown neon:// page"));
+                    self.loading = false;
+                    false
+                }
+            }
             _ => {
                 // Need to fetch the webpage
                 self.title = format!("Loading {}", self.url);
@@ -115,15 +133,15 @@ impl BrowserTab {
         if let Some(error) = &self.error {
             let mut retry_clicked = false;
             ui.centered_and_justified(|ui| {
-                ui.label(egui::RichText::new("❌ Error").size(20.0).color(egui::Color32::RED));
+                ui.label(egui::RichText::new("X Error").size(20.0).color(egui::Color32::RED));
                 ui.label(format!("URL: {}", self.url));
                 ui.separator();
                 ui.label(egui::RichText::new(error).color(egui::Color32::LIGHT_RED));
                 ui.separator();
                 ui.label("Try:");
-                ui.label("• Check your internet connection");
-                ui.label("• Make sure the URL is correct");
-                ui.label("• Try adding https:// prefix");
+                ui.label("- Check your internet connection");
+                ui.label("- Make sure the URL is correct");
+                ui.label("- Try adding https:// prefix");
                 if ui.button(
                     egui::RichText::new(format!("{} Retry", NeonIcons::ARROW_CLOCKWISE))
                         .color(NeonTheme::NEON_BLUE)
@@ -286,6 +304,327 @@ impl BrowserTab {
             }
         }
         None
+    }
+
+    /// Generate HTML content for custom neon:// pages
+    fn generate_custom_page_html(&self, url: &str) -> String {
+        let router = PageRouter::new();
+        
+        // Create a mock egui UI context for rendering
+        // Since we need to convert egui output to HTML, we'll generate static HTML
+        match url {
+            "neon://about" => {
+                format!(r#"
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>About NeonSearch</title>
+                    <style>
+                        body {{ 
+                            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                            background: linear-gradient(135deg, #1a1a2e, #16213e);
+                            color: #ffffff;
+                            margin: 0;
+                            padding: 20px;
+                            line-height: 1.6;
+                        }}
+                        .container {{
+                            max-width: 800px;
+                            margin: 0 auto;
+                            background: rgba(0, 0, 0, 0.3);
+                            border-radius: 12px;
+                            padding: 30px;
+                            border: 1px solid #00ffcc;
+                        }}
+                        .header {{
+                            text-align: center;
+                            margin-bottom: 30px;
+                        }}
+                        .logo {{
+                            font-size: 2.5em;
+                            color: #00ffcc;
+                            margin-bottom: 10px;
+                        }}
+                        .version {{
+                            color: #cccccc;
+                            font-size: 1.2em;
+                        }}
+                        .section {{
+                            margin: 20px 0;
+                            padding: 20px;
+                            background: rgba(255, 255, 255, 0.05);
+                            border-radius: 8px;
+                        }}
+                        .section h3 {{
+                            color: #00ffcc;
+                            margin-top: 0;
+                        }}
+                        .feature-list {{
+                            list-style: none;
+                            padding: 0;
+                        }}
+                        .feature-list li {{
+                            padding: 5px 0;
+                            color: #ffffff;
+                        }}
+                        .feature-list li:before {{
+                            content: "✓ ";
+                            color: #00ffcc;
+                            font-weight: bold;
+                        }}
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <div class="logo">🌐 NeonSearch</div>
+                            <div class="version">Version 0.2.0</div>
+                        </div>
+                        
+                        <div class="section">
+                            <h3>About This Browser</h3>
+                            <p>NeonSearch is a custom web browser built entirely from scratch in Rust. Unlike other browsers that use existing engines like Chromium or Gecko, every component from HTML parsing to GPU rendering is implemented natively.</p>
+                        </div>
+                        
+                        <div class="section">
+                            <h3>Key Features</h3>
+                            <ul class="feature-list">
+                                <li>Custom HTML/CSS parsing engine</li>
+                                <li>Native Rust implementation</li>
+                                <li>Advanced large website handling</li>
+                                <li>5-tier adaptive rendering system</li>
+                                <li>Virtual scrolling for massive pages</li>
+                                <li>Streaming content processing</li>
+                                <li>Custom neon:// protocol pages</li>
+                                <li>Built-in JavaScript engine</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="section">
+                            <h3>System Information</h3>
+                            <p><strong>Platform:</strong> {}</p>
+                            <p><strong>Build Date:</strong> September 2025</p>
+                            <p><strong>Engine:</strong> Custom Rust Engine</p>
+                            <p><strong>UI Framework:</strong> egui 0.29</p>
+                        </div>
+                        
+                        <div class="section">
+                            <h3>Credits</h3>
+                            <p>Developed by <strong>NeonDev™</strong></p>
+                            <p>A from-scratch browser implementation showcasing the power and safety of Rust for systems programming.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                "#, std::env::consts::OS)
+            }
+            "neon://settings" => {
+                r#"
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>NeonSearch Settings</title>
+                    <style>
+                        body { 
+                            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                            background: linear-gradient(135deg, #1a1a2e, #16213e);
+                            color: #ffffff;
+                            margin: 0;
+                            padding: 20px;
+                            line-height: 1.6;
+                        }
+                        .container {
+                            max-width: 900px;
+                            margin: 0 auto;
+                            background: rgba(0, 0, 0, 0.3);
+                            border-radius: 12px;
+                            padding: 30px;
+                            border: 1px solid #00ffcc;
+                        }
+                        .header {
+                            text-align: center;
+                            margin-bottom: 30px;
+                        }
+                        .title {
+                            font-size: 2.2em;
+                            color: #00ffcc;
+                            margin-bottom: 10px;
+                        }
+                        .tabs {
+                            display: flex;
+                            margin-bottom: 30px;
+                            border-bottom: 2px solid #00ffcc;
+                        }
+                        .tab {
+                            padding: 12px 24px;
+                            background: rgba(255, 255, 255, 0.1);
+                            margin-right: 5px;
+                            border-radius: 8px 8px 0 0;
+                            cursor: pointer;
+                            color: #cccccc;
+                        }
+                        .tab.active {
+                            background: #00ffcc;
+                            color: #1a1a2e;
+                        }
+                        .section {
+                            margin: 20px 0;
+                            padding: 20px;
+                            background: rgba(255, 255, 255, 0.05);
+                            border-radius: 8px;
+                        }
+                        .section h3 {
+                            color: #00ffcc;
+                            margin-top: 0;
+                        }
+                        .setting-item {
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: center;
+                            padding: 10px 0;
+                            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+                        }
+                        .setting-item:last-child {
+                            border-bottom: none;
+                        }
+                        input[type="checkbox"] {
+                            width: 20px;
+                            height: 20px;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <div class="title">⚙️ Settings</div>
+                        </div>
+                        
+                        <div class="tabs">
+                            <div class="tab active">General</div>
+                            <div class="tab">Privacy</div>
+                            <div class="tab">Performance</div>
+                            <div class="tab">Appearance</div>
+                            <div class="tab">Advanced</div>
+                        </div>
+                        
+                        <div class="section">
+                            <h3>General Settings</h3>
+                            <div class="setting-item">
+                                <span>Default Search Engine</span>
+                                <select style="background: #2a2a3e; color: white; border: 1px solid #00ffcc; padding: 5px;">
+                                    <option>DuckDuckGo</option>
+                                    <option>Google</option>
+                                    <option>Bing</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <span>Homepage</span>
+                                <input type="text" value="neon://home" style="background: #2a2a3e; color: white; border: 1px solid #00ffcc; padding: 5px;">
+                            </div>
+                        </div>
+                        
+                        <div class="section">
+                            <h3>Privacy & Security</h3>
+                            <div class="setting-item">
+                                <span>Enable JavaScript</span>
+                                <input type="checkbox" checked>
+                            </div>
+                            <div class="setting-item">
+                                <span>Block Third-Party Cookies</span>
+                                <input type="checkbox">
+                            </div>
+                            <div class="setting-item">
+                                <span>Enable HTTPS-Only Mode</span>
+                                <input type="checkbox" checked>
+                            </div>
+                        </div>
+                        
+                        <div class="section">
+                            <h3>Performance</h3>
+                            <div class="setting-item">
+                                <span>Enable Hardware Acceleration</span>
+                                <input type="checkbox" checked>
+                            </div>
+                            <div class="setting-item">
+                                <span>Maximum Content Size</span>
+                                <select style="background: #2a2a3e; color: white; border: 1px solid #00ffcc; padding: 5px;">
+                                    <option>50 MB</option>
+                                    <option>100 MB</option>
+                                    <option>200 MB</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                "#.to_string()
+            }
+            _ => {
+                // For other neon:// pages, create a basic "coming soon" page
+                let page_name = url.strip_prefix("neon://").unwrap_or("unknown");
+                format!(r#"
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>{} - NeonSearch</title>
+                    <style>
+                        body {{ 
+                            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                            background: linear-gradient(135deg, #1a1a2e, #16213e);
+                            color: #ffffff;
+                            margin: 0;
+                            padding: 40px;
+                            text-align: center;
+                        }}
+                        .container {{
+                            max-width: 600px;
+                            margin: 0 auto;
+                            background: rgba(0, 0, 0, 0.3);
+                            border-radius: 12px;
+                            padding: 40px;
+                            border: 1px solid #00ffcc;
+                        }}
+                        .icon {{
+                            font-size: 4em;
+                            margin-bottom: 20px;
+                        }}
+                        .title {{
+                            font-size: 2em;
+                            color: #00ffcc;
+                            margin-bottom: 20px;
+                            text-transform: capitalize;
+                        }}
+                        .message {{
+                            font-size: 1.2em;
+                            color: #cccccc;
+                            margin-bottom: 30px;
+                        }}
+                        .link {{
+                            color: #00ffcc;
+                            text-decoration: none;
+                            margin: 0 10px;
+                        }}
+                        .link:hover {{
+                            text-decoration: underline;
+                        }}
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="icon">🚧</div>
+                        <div class="title">{} Page</div>
+                        <div class="message">This page is under development and will be available in a future version of NeonSearch.</div>
+                        <div>
+                            <a href="neon://about" class="link">About</a>
+                            <a href="neon://settings" class="link">Settings</a>
+                            <a href="about:home" class="link">Home</a>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                "#, page_name, page_name)
+            }
+        }
     }
 }
 
