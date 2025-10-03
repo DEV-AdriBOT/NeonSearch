@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-0.2.1-blue.svg)
+![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)
 ![Rust](https://img.shields.io/badge/rust-1.70+-orange.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey.svg)
@@ -544,6 +544,142 @@ pub struct LoadingProgress {
 - **⌨️ Keyboard Navigation** → Full accessibility support with visual feedback
 - **📱 Responsive Design** → Scales beautifully across screen sizes
 - **🌟 Visual Polish** → Sophisticated shadows, gradients, and micro-interactions
+
+---
+
+### 📥 Download Manager
+> **Directory**: `src/engine/download_manager.rs`, `src/storage/downloads_db.rs`, `src/security/download_validator.rs`  
+> **Status**: ✅ Production Ready  
+> **Version**: v0.3.0 (NEW)
+
+Enterprise-grade download manager with concurrent downloads, resume capability, persistent storage, and comprehensive security validation.
+
+#### 🚀 Key Features
+
+| Feature | Implementation | Status |
+|---------|---------------|---------|
+| **📥 Concurrent Downloads** | Semaphore-based limiting (max 3) | ✅ Complete |
+| **⏸️ Resume Support** | HTTP Range requests | ✅ Complete |
+| **📊 Progress Tracking** | Real-time speed/ETA calculations | ✅ Complete |
+| **💾 Persistent Storage** | SQLite database with indexing | ✅ Complete |
+| **🔐 Security Validation** | Multi-layer URL/filename checks | ✅ Complete |
+| **🔄 Retry Logic** | Exponential backoff (3 attempts) | ✅ Complete |
+| **✅ File Integrity** | SHA-256 checksum verification | ✅ Complete |
+| **💻 Cross-Platform** | macOS, Windows, Linux support | ✅ Complete |
+
+#### 📊 Architecture Flow
+
+```
+┌─────────────┐
+│   UI Layer  │  Real-time progress, controls (neon://downloads)
+└──────┬──────┘
+       │ Events
+┌──────▼──────┐
+│   Engine    │  DownloadManager: Concurrency, retry, progress
+│             │  - Semaphore-based queue (max 3 concurrent)
+│             │  - 64KB streaming chunks (constant memory)
+│             │  - Speed/ETA calculations
+└──────┬──────┘
+       │
+    ┌──┴──┬────────┐
+    ▼     ▼        ▼
+┌────────┐┌─────┐┌─────────┐
+│Storage ││Net  ││Security │
+│SQLite  ││HTTP ││Validator│
+│Database││Range││SSRF/Path│
+└────────┘└─────┘└─────────┘
+```
+
+#### 🔄 Core Components
+
+```rust
+pub mod engine {
+    pub mod download_manager;  // Core download engine
+}
+
+pub mod storage {
+    pub mod downloads_db;      // SQLite persistence layer
+}
+
+pub mod security {
+    pub mod download_validator; // Security validation
+}
+
+// Download manager structure
+pub struct DownloadManager {
+    db: Arc<DownloadsDatabase>,
+    active_downloads: Arc<RwLock<HashMap<String, DownloadHandle>>>,
+    semaphore: Arc<Semaphore>,  // Concurrency control
+    client: reqwest::Client,     // Reusable HTTP client
+}
+
+// Real-time progress tracking
+pub struct DownloadProgress {
+    pub downloaded_bytes: u64,
+    pub total_bytes: Option<u64>,
+    pub speed_bps: f64,              // Bytes per second
+    pub eta_seconds: Option<u64>,    // Estimated time remaining
+    pub status: DownloadStatus,
+}
+```
+
+#### ⚡ Performance Characteristics
+
+**Memory Efficiency:**
+- **O(1) Memory per Download**: 64KB chunk streaming, not dependent on file size
+- **Connection Pooling**: HTTP client reuse for optimal network performance
+- **Database Performance**: <1ms queries with proper indexing (status, created_at)
+- **Concurrency Control**: Semaphore prevents resource exhaustion
+
+**Security Features:**
+- **URL Validation**: Prevents SSRF attacks (blocks localhost/private IPs)
+- **Filename Sanitization**: Removes path traversal (`../`) and dangerous characters
+- **Extension Whitelist**: Validates safe extensions, warns for executables (.exe, .bat, .sh)
+- **MIME Verification**: Ensures content-type matches expected format
+- **Disk Space Check**: Pre-download validation (Unix platforms)
+
+#### 📋 Download Lifecycle
+
+```rust
+// 1. Validation
+DownloadValidator::validate_url(&url)?;
+let safe_filename = DownloadValidator::sanitize_filename(&filename)?;
+DownloadValidator::check_disk_space(&path, file_size)?;
+
+// 2. Start download
+let download_id = manager.start_download(url, save_path).await?;
+
+// 3. Monitor progress (UI updates)
+let progress = manager.get_progress(&download_id);
+// progress.speed_bps, progress.eta_seconds, progress.downloaded_bytes
+
+// 4. Handle completion
+if progress.status == DownloadStatus::Completed {
+    manager.verify_checksum(&download_id).await?;
+}
+```
+
+#### 🗄️ Database Schema
+
+```sql
+CREATE TABLE downloads (
+    id TEXT PRIMARY KEY,
+    filename TEXT NOT NULL,
+    url TEXT NOT NULL,
+    file_size INTEGER,
+    downloaded_bytes INTEGER DEFAULT 0,
+    status TEXT NOT NULL,
+    mime_type TEXT,
+    save_path TEXT NOT NULL,
+    checksum TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    completed_at TEXT
+);
+
+CREATE INDEX idx_status ON downloads(status);
+CREATE INDEX idx_created_at ON downloads(created_at);
+```
 
 ---
 

@@ -21,7 +21,7 @@
 - 📱 **Responsive** - Never freezes, even on large sites
 - 🛠️ **Cross-Platform** - One-command setup on macOS, Linux, and Windows
 
-## ✅ Current Status: **FULLY FUNCTIONAL**
+## ✅ Current Status: **FULLY FUNCTIONAL v0.3.0**
 
 NeonSearch is **production-ready** and successfully handles real websites including:
 - ✅ **Google.com** - Large site optimization (71KB → 234KB decompressed)
@@ -30,6 +30,7 @@ NeonSearch is **production-ready** and successfully handles real websites includ
 - ✅ **HTTPS sites** - Secure connection handling
 - ✅ **Image loading** - Favicon and embedded images
 - ✅ **Compressed content** - Gzip, Deflate, Brotli, and Zstd support
+- ✅ **Download Manager** - Production-ready file downloads with resume support (NEW v0.3.0)
 
 ## 🏗️ Advanced Architecture
 
@@ -176,6 +177,13 @@ run.bat             # Launch with Windows settings
 - **chrono** - Date and time handling
 - **uuid** - Unique identifier generation
 
+#### 📥 **Download Manager (v0.3.0)**
+- **rusqlite 0.32** - SQLite database for download persistence (bundled)
+- **sha2 0.10** - SHA-256 checksum verification
+- **futures-core 0.3** - Async streaming primitives
+- **futures-util 0.3** - Async utilities for download pipeline
+- **dirs 5.0** - Cross-platform directory paths
+
 ## 🎨 Complete Feature Set
 
 ### ✅ **Fully Implemented & Production Ready**
@@ -204,6 +212,19 @@ run.bat             # Launch with Windows settings
 - [x] **Loading Indicators** - Progress bars and loading animations
 - [x] **Error Pages** - Beautiful error displays with recovery suggestions
 - [x] **Responsive Design** - Adaptive layout for different window sizes
+
+#### 📥 **Download Manager (NEW v0.3.0)**
+- [x] **Concurrent Downloads** - Up to 3 simultaneous downloads with queue management
+- [x] **Resume Capability** - Pause and resume downloads using HTTP Range requests
+- [x] **Progress Tracking** - Real-time speed (MB/s, KB/s, B/s) and ETA calculations
+- [x] **SQLite Database** - Persistent download history with search and filtering
+- [x] **File Integrity** - SHA-256 checksum verification for completed downloads
+- [x] **Retry Logic** - Automatic retry with exponential backoff (3 attempts)
+- [x] **Security Validation** - URL/filename sanitization, extension whitelisting, MIME verification
+- [x] **Disk Space Check** - Pre-download validation to prevent failures
+- [x] **Cross-Platform** - Open file/folder support for macOS, Windows, and Linux
+- [x] **Memory Efficient** - Streaming architecture with 64KB chunks (constant memory usage)
+- [x] **Smart UI** - Interactive controls, status indicators, and context menus
 
 #### ⚡ **JavaScript Engine** 
 - [x] **Custom Interpreter** - Built-from-scratch JavaScript engine with ES5+ support
@@ -455,6 +476,83 @@ cargo build --release --features profiling
 - [ ] 🎯 Mobile platform support
 - [ ] 🎯 Cloud sync and profiles
 - [ ] 🎯 WebAssembly support
+
+## 📥 **Download Manager Usage (v0.3.0)**
+
+### 🎯 **Key Features**
+
+The NeonSearch Download Manager provides enterprise-grade file downloading capabilities:
+
+#### ⚡ **Core Functionality**
+- **Concurrent Downloads**: Up to 3 simultaneous downloads with automatic queueing
+- **Resume Support**: Pause and resume downloads using HTTP Range requests
+- **Progress Tracking**: Real-time speed indicators (MB/s, KB/s, B/s) with ETA calculations
+- **Persistent History**: SQLite database stores all download records with full search capability
+- **File Integrity**: SHA-256 checksum verification ensures downloaded files are complete and uncorrupted
+- **Smart Retry**: Exponential backoff retry logic (3 attempts with 2s, 4s, 8s delays)
+
+#### 🛡️ **Security Features**
+- **URL Validation**: Prevents SSRF attacks by blocking localhost and private IP ranges
+- **Filename Sanitization**: Automatically removes path traversal sequences (`../`) and dangerous characters
+- **Extension Whitelisting**: Validates file extensions against safe types, warns for executables
+- **MIME Verification**: Ensures content types match expected formats
+- **Disk Space Check**: Validates available space before starting downloads (Unix platforms)
+- **Safe Path Generation**: Automatically handles duplicate filenames with incremental numbering
+
+#### 💻 **User Interface**
+- **Real-time Progress Bars**: Visual percentage, speed, and ETA display
+- **Interactive Controls**: Pause, Resume, Cancel, Retry, and Remove buttons
+- **Cross-Platform File Operations**: "Open File" and "Open Folder" for Windows, macOS, and Linux
+- **Search & Filter**: Find downloads by filename, URL, or status (in progress, completed, failed)
+- **Status Indicators**: Clear visual feedback for download state with color coding
+
+### 📖 **How to Use**
+
+#### Starting a Download
+1. Navigate to any file URL in NeonSearch
+2. The browser will automatically detect downloadable content
+3. Files begin downloading immediately and appear in `neon://downloads`
+4. Monitor progress in real-time with speed and ETA indicators
+
+#### Managing Downloads
+```
+Navigate to: neon://downloads
+```
+- **View Active Downloads**: See all in-progress downloads with live progress bars
+- **Search History**: Use the search bar to find past downloads by name or URL
+- **Filter by Status**: Toggle "Show only active" to focus on current downloads
+- **Control Downloads**: Click Pause/Resume/Cancel buttons for active downloads
+- **Retry Failed**: Automatically retry downloads that failed due to network issues
+- **Open Files**: Click "Open File" to launch downloaded files in default applications
+- **Open Folder**: Click "Open Folder" to reveal files in system file explorer
+
+#### Technical Details
+- **Storage Location**: Downloads saved to system download folder (`~/Downloads` on macOS/Linux, `%USERPROFILE%\Downloads` on Windows)
+- **Database Location**: Download history stored in `~/.neonsearch/downloads.db`
+- **Memory Usage**: Constant O(1) memory per download via 64KB streaming chunks
+- **Concurrent Limit**: Maximum 3 simultaneous downloads (configurable)
+- **Auto-cleanup**: Old completed downloads automatically removed based on retention policy
+
+### 🔧 **Architecture**
+
+```
+┌─────────────┐
+│   UI Layer  │  Real-time progress, controls
+└──────┬──────┘
+       │ Events
+┌──────▼──────┐
+│   Engine    │  Concurrency, retry, progress
+└──────┬──────┘
+       │
+    ┌──┴──┬────────┐
+    ▼     ▼        ▼
+┌────────┐┌─────┐┌─────────┐
+│Storage ││Net  ││Security │
+│SQLite  ││HTTP ││Validator│
+└────────┘└─────┘└─────────┘
+```
+
+For detailed implementation information, see [DOWNLOADS_FEATURE.md](DOWNLOADS_FEATURE.md).
 
 ## 🤝 **Contributing to NeonSearch**
 
