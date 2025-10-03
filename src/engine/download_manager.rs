@@ -600,12 +600,17 @@ impl DownloadManager {
     /// Generate a safe download path for a URL
     pub fn generate_safe_download_path(download_dir: &Path, url: &str) -> PathBuf {
         // Extract filename from URL
-        let filename = url::Url::parse(url)
-            .ok()
-            .and_then(|u| u.path_segments())
-            .and_then(|s| s.last())
-            .unwrap_or("download")
-            .to_string();
+        let filename = if let Ok(parsed_url) = url::Url::parse(url) {
+            if let Some(segments) = parsed_url.path_segments() {
+                segments.last()
+                    .unwrap_or("download")
+                    .to_string()
+            } else {
+                "download".to_string()
+            }
+        } else {
+            "download".to_string()
+        };
         
         DownloadValidator::generate_safe_path(download_dir, &filename)
     }
