@@ -8,6 +8,7 @@ pub mod virtual_scroll;
 pub mod adaptive_renderer;
 pub mod content_analyzer;
 pub mod background_processor;
+pub mod download_manager;
 
 use eframe::egui;
 use self::dom::DOMNode;

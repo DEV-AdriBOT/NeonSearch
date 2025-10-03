@@ -632,6 +632,141 @@ pub struct WebPage {
 
 ---
 
+### 📥 Download Manager
+> **Directory**: `src/engine/`, `src/storage/`, `src/security/`  
+> **NEW in v0.2.1**: Full-featured download manager with resume support  
+> **Features**: Concurrent downloads, security validation, persistent history
+
+Complete download management system with real-time progress tracking, resume capability, and comprehensive security.
+
+#### 🔧 Components Overview
+
+```rust
+pub mod download_system {
+    pub mod download_manager;    // Core download engine (src/engine/)
+    pub mod downloads_db;        // SQLite persistence (src/storage/)
+    pub mod download_validator;  // Security validation (src/security/)
+}
+```
+
+#### ⚡ Key Features
+
+| Feature | Implementation | Details |
+|---------|---------------|---------|
+| **🔄 Concurrent Downloads** | Tokio semaphore | Max 3 simultaneous downloads |
+| **⏸️ Resume Support** | HTTP Range requests | Continue interrupted downloads |
+| **📊 Real-time Progress** | Event-based updates | Speed (MB/s), ETA, percentage |
+| **💾 Persistent Storage** | SQLite database | Full download history |
+| **🔐 Security Validation** | Multi-layer checks | URL, filename, MIME, disk space |
+| **✓ File Integrity** | SHA-256 checksums | Verify completed downloads |
+| **🔁 Auto Retry** | Exponential backoff | 3 attempts, 2-8 second delays |
+| **⚙️ Bandwidth Throttling** | Configurable limits | Optional rate limiting |
+
+#### 🗄️ Database Schema
+
+```sql
+CREATE TABLE downloads (
+    id TEXT PRIMARY KEY,
+    filename TEXT NOT NULL,
+    url TEXT NOT NULL,
+    file_size INTEGER,
+    downloaded_bytes INTEGER NOT NULL DEFAULT 0,
+    status TEXT NOT NULL,  -- pending, in_progress, paused, completed, failed, cancelled
+    mime_type TEXT,
+    save_path TEXT NOT NULL,
+    checksum TEXT,         -- SHA-256 hash
+    error_message TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    completed_at TEXT
+);
+```
+
+#### 🛡️ Security Features
+
+**Multi-layer Validation Pipeline:**
+
+1. **URL Validation**: Prevents SSRF attacks (blocks localhost/private IPs)
+2. **Filename Sanitization**: Removes path traversal (../, special chars)
+3. **Extension Validation**: Whitelist of safe types, warns on executables
+4. **MIME Type Verification**: Validates content type matches expectations
+5. **Disk Space Check**: Ensures sufficient space before download (Unix)
+6. **Safe Path Generation**: Auto-handles duplicate filenames
+
+**Validated File Extensions:**
+- ✅ Documents: pdf, doc, txt, xlsx, ppt, csv
+- ✅ Archives: zip, tar, gz, 7z, rar
+- ✅ Media: jpg, png, mp3, mp4, webm
+- ⚠️ Executables: exe, bat, sh (require confirmation)
+
+#### 🎯 Download Lifecycle
+
+```rust
+// 1. Initialize download manager
+let manager = DownloadManager::new(&db_path)?;
+
+// 2. Start download (with validation)
+let download_id = manager.start_download(url, save_path).await?;
+
+// 3. Monitor progress
+let progress = manager.get_progress(&download_id);
+// Returns: DownloadProgress { speed_bps, eta_seconds, progress_percent, ... }
+
+// 4. Control download
+manager.pause_download(&download_id).await?;
+manager.resume_download(&download_id).await?;
+manager.cancel_download(&download_id).await?;
+
+// 5. Query history
+let history = manager.get_download_history()?;
+let active = manager.get_downloads_by_status(DownloadState::InProgress)?;
+```
+
+#### 📱 UI Integration
+
+**Downloads Page** (`neon://downloads`):
+- 🔍 Search by filename or URL
+- 📊 Real-time progress with speed indicators
+- ⏸️ Pause/Resume/Cancel controls
+- 📂 Open file or containing folder (cross-platform)
+- 🔄 Retry failed downloads
+- 🗑️ Remove from history
+
+**Progress Display:**
+```
+█████████████████░░░░░░░  68.2% - 45.2 MB / 66.3 MB - 2.3 MB/s - 9s remaining
+[⏸ Pause] [✗ Cancel]
+```
+
+#### ⚡ Performance Characteristics
+
+- **Memory Efficient**: Streams to disk (64KB chunks)
+- **Concurrent Safe**: Semaphore-based concurrency control
+- **Network Optimized**: Connection pooling via reqwest
+- **Disk Friendly**: Async I/O with Tokio
+- **Database Fast**: Indexed queries on status and created_at
+
+#### 🌐 Cross-Platform Support
+
+| Platform | File Operations | Disk Check |
+|----------|----------------|------------|
+| **Windows** | ✅ Explorer integration | ⏳ Planned |
+| **macOS** | ✅ Finder integration | ✅ statvfs |
+| **Linux** | ✅ xdg-open integration | ✅ statvfs |
+
+#### 📋 Technical Details
+
+- **Chunk Size**: 64KB for optimal streaming
+- **Timeout**: 300 seconds per download
+- **Max Redirects**: 10 (handled by reqwest)
+- **Retry Delay**: 2s, 4s, 8s (exponential backoff)
+- **Event System**: Unbounded channel for UI updates
+- **Database**: SQLite with automatic migration
+
+See [DOWNLOADS_FEATURE.md](DOWNLOADS_FEATURE.md) for complete documentation.
+
+---
+
 ### 🛡️ Security Framework
 > **Directory**: `src/security/`  
 > **Standards**: OWASP Top 10, CSP Level 3  

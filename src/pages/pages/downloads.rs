@@ -3,6 +3,10 @@ use crate::pages::{CustomPage, components};
 use crate::ui::theme::NeonTheme;
 use crate::ui::icons::NeonIcons;
 use std::time::SystemTime;
+use std::sync::{Arc, Mutex};
+use std::path::{Path, PathBuf};
+use crate::engine::download_manager::{DownloadManager, DownloadEvent};
+use crate::storage::DownloadState;
 
 #[derive(Debug, Clone)]
 pub struct DownloadItem {
@@ -26,6 +30,18 @@ pub enum DownloadStatus {
     Cancelled,
 }
 
+impl From<DownloadState> for DownloadStatus {
+    fn from(state: DownloadState) -> Self {
+        match state {
+            DownloadState::Pending | DownloadState::InProgress => DownloadStatus::InProgress,
+            DownloadState::Completed => DownloadStatus::Completed,
+            DownloadState::Paused => DownloadStatus::Paused,
+            DownloadState::Failed => DownloadStatus::Failed("Download failed".to_string()),
+            DownloadState::Cancelled => DownloadStatus::Cancelled,
+        }
+    }
+}
+
 pub struct DownloadsPage {
     url: String,
     title: String,
@@ -33,6 +49,8 @@ pub struct DownloadsPage {
     search_query: String,
     show_only_active: bool,
     selected_download: Option<String>,
+    download_manager: Option<Arc<Mutex<DownloadManager>>>,
+    last_update: SystemTime,
 }
 
 impl DownloadsPage {
@@ -79,6 +97,9 @@ impl DownloadsPage {
             mime_type: "application/pdf".to_string(),
         });
         
+        // Try to initialize download manager with persistent storage
+        let download_manager = Self::init_download_manager();
+        
         Self {
             url: "neon://downloads".to_string(),
             title: "Downloads".to_string(),
@@ -86,6 +107,111 @@ impl DownloadsPage {
             search_query: String::new(),
             show_only_active: false,
             selected_download: None,
+            download_manager,
+            last_update: SystemTime::now(),
+        }
+    }
+    
+    fn init_download_manager() -> Option<Arc<Mutex<DownloadManager>>> {
+        // Create data directory for downloads database
+        let data_dir = dirs::data_dir()
+            .or_else(|| std::env::current_dir().ok())
+            .map(|d| d.join("NeonSearch"));
+        
+        if let Some(dir) = data_dir {
+            let _ = std::fs::create_dir_all(&dir);
+            let db_path = dir.join("downloads.db");
+            
+            match DownloadManager::new(&db_path) {
+                Ok(manager) => {
+                    println!("Download manager initialized with database: {:?}", db_path);
+                    Some(Arc::new(Mutex::new(manager)))
+                }
+                Err(e) => {
+                    eprintln!("Failed to initialize download manager: {}", e);
+                    None
+                }
+            }
+        } else {
+            None
+        }
+    }
+    
+    pub fn set_download_manager(&mut self, manager: Arc<Mutex<DownloadManager>>) {
+        self.download_manager = Some(manager);
+    }
+    
+    fn sync_with_manager(&mut self) {
+        // Only update every second to avoid excessive DB queries
+        if let Ok(elapsed) = self.last_update.elapsed() {
+            if elapsed.as_secs() < 1 {
+                return;
+            }
+        }
+        
+        self.last_update = SystemTime::now();
+        
+        if let Some(ref manager) = self.download_manager {
+            if let Ok(mgr) = manager.lock() {
+                // Poll for events
+                let events = mgr.poll_events();
+                for event in events {
+                    match event {
+                        DownloadEvent::Progress(progress) => {
+                            // Update progress for existing download
+                            if let Some(item) = self.downloads.iter_mut().find(|d| d.id == progress.id) {
+                                item.downloaded_size = progress.downloaded_bytes;
+                                item.file_size = progress.total_bytes.unwrap_or(item.file_size);
+                            }
+                        }
+                        DownloadEvent::Completed(id, _path) => {
+                            if let Some(item) = self.downloads.iter_mut().find(|d| d.id == id) {
+                                item.status = DownloadStatus::Completed;
+                            }
+                        }
+                        DownloadEvent::Failed(id, error) => {
+                            if let Some(item) = self.downloads.iter_mut().find(|d| d.id == id) {
+                                item.status = DownloadStatus::Failed(error);
+                            }
+                        }
+                        DownloadEvent::Paused(id) => {
+                            if let Some(item) = self.downloads.iter_mut().find(|d| d.id == id) {
+                                item.status = DownloadStatus::Paused;
+                            }
+                        }
+                        DownloadEvent::Cancelled(id) => {
+                            if let Some(item) = self.downloads.iter_mut().find(|d| d.id == id) {
+                                item.status = DownloadStatus::Cancelled;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                
+                // Sync downloads from database
+                if let Ok(records) = mgr.get_download_history() {
+                    // Update or add download items
+                    for record in records {
+                        let exists = self.downloads.iter().any(|d| d.id == record.id);
+                        
+                        if !exists {
+                            self.downloads.push(DownloadItem {
+                                id: record.id,
+                                filename: record.filename,
+                                url: record.url,
+                                file_size: record.file_size.unwrap_or(0),
+                                downloaded_size: record.downloaded_bytes,
+                                status: record.status.into(),
+                                start_time: SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(
+                                    record.created_at.timestamp() as u64
+                                ),
+                                download_path: record.save_path,
+                                mime_type: record.mime_type.unwrap_or_default(),
+                            });
+                        }
+                    }
+                }
+            }
         }
     }
     
@@ -122,6 +248,9 @@ impl CustomPage for DownloadsPage {
     }
     
     fn render(&mut self, ui: &mut Ui, _ctx: &Context) {
+        // Sync with download manager
+        self.sync_with_manager();
+        
         components::page_header(
             ui, 
             "Downloads", 
@@ -271,14 +400,97 @@ impl DownloadsPage {
                         // Progress bar and status
                         match &download.status {
                             DownloadStatus::InProgress => {
-                                let progress = download.downloaded_size as f32 / download.file_size as f32;
-                                let progress_bar = egui::ProgressBar::new(progress)
-                                    .text(format!("{}% - {} / {}", 
+                                let progress = if download.file_size > 0 {
+                                    download.downloaded_size as f32 / download.file_size as f32
+                                } else {
+                                    0.0
+                                };
+                                
+                                // Get real-time progress from manager if available
+                                let progress_info = if let Some(ref mgr) = self.download_manager {
+                                    if let Ok(m) = mgr.lock() {
+                                        m.get_progress(&download.id)
+                                    } else {
+                                        None
+                                    }
+                                } else {
+                                    None
+                                };
+                                
+                                let progress_text = if let Some(info) = progress_info {
+                                    let speed_str = if info.speed_bps > 1024 * 1024 {
+                                        format!("{:.2} MB/s", info.speed_bps as f64 / (1024.0 * 1024.0))
+                                    } else if info.speed_bps > 1024 {
+                                        format!("{:.1} KB/s", info.speed_bps as f64 / 1024.0)
+                                    } else {
+                                        format!("{} B/s", info.speed_bps)
+                                    };
+                                    
+                                    let eta_str = if let Some(eta) = info.eta_seconds {
+                                        if eta > 3600 {
+                                            format!(" - {}h {}m remaining", eta / 3600, (eta % 3600) / 60)
+                                        } else if eta > 60 {
+                                            format!(" - {}m {}s remaining", eta / 60, eta % 60)
+                                        } else {
+                                            format!(" - {}s remaining", eta)
+                                        }
+                                    } else {
+                                        String::new()
+                                    };
+                                    
+                                    format!("{:.1}% - {} / {} - {}{}", 
+                                        info.progress_percent,
+                                        Self::format_file_size(info.downloaded_bytes),
+                                        Self::format_file_size(info.total_bytes.unwrap_or(download.file_size)),
+                                        speed_str,
+                                        eta_str)
+                                } else {
+                                    format!("{}% - {} / {}", 
                                         (progress * 100.0) as u32,
                                         Self::format_file_size(download.downloaded_size),
-                                        Self::format_file_size(download.file_size)))
+                                        Self::format_file_size(download.file_size))
+                                };
+                                
+                                let progress_bar = egui::ProgressBar::new(progress)
+                                    .text(progress_text)
                                     .fill(NeonTheme::NEON_CYAN);
                                 ui.add(progress_bar);
+                                
+                                // Add pause and cancel buttons
+                                ui.add_space(4.0);
+                                ui.horizontal(|ui| {
+                                    if ui.button(RichText::new(format!("{} Pause", NeonIcons::PAUSE))
+                                        .color(NeonTheme::warning_color())).clicked() {
+                                        if let Some(ref mgr) = self.download_manager {
+                                            let mgr = mgr.clone();
+                                            let id = download.id.clone();
+                                            std::thread::spawn(move || {
+                                                let rt = tokio::runtime::Runtime::new().unwrap();
+                                                rt.block_on(async {
+                                                    if let Ok(m) = mgr.lock() {
+                                                        let _ = m.pause_download(&id).await;
+                                                    }
+                                                });
+                                            });
+                                        }
+                                    }
+                                    
+                                    if ui.button(RichText::new(format!("{} Cancel", NeonIcons::CROSS))
+                                        .color(NeonTheme::error_color())).clicked() {
+                                        if let Some(ref mgr) = self.download_manager {
+                                            let mgr = mgr.clone();
+                                            let id = download.id.clone();
+                                            std::thread::spawn(move || {
+                                                let rt = tokio::runtime::Runtime::new().unwrap();
+                                                rt.block_on(async {
+                                                    if let Ok(m) = mgr.lock() {
+                                                        let _ = m.cancel_download(&id).await;
+                                                    }
+                                                });
+                                            });
+                                        }
+                                    }
+                                });
                             },
                             DownloadStatus::Completed => {
                                 ui.horizontal(|ui| {
@@ -286,12 +498,14 @@ impl DownloadsPage {
                                         .color(NeonTheme::success_color()));
                                     
                                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                                        if ui.button("Open Folder").clicked() {
-                                            // TODO: Open download folder
+                                        if ui.button(RichText::new(format!("{} Open Folder", NeonIcons::FOLDER_OPEN))
+                                            .color(NeonTheme::NEON_CYAN)).clicked() {
+                                            Self::open_file_location(&download.download_path);
                                         }
                                         
-                                        if ui.button("Open File").clicked() {
-                                            // TODO: Open downloaded file
+                                        if ui.button(RichText::new(format!("{} Open File", NeonIcons::PLAY))
+                                            .color(NeonTheme::NEON_CYAN)).clicked() {
+                                            Self::open_file(&download.download_path);
                                         }
                                     });
                                 });
@@ -302,12 +516,36 @@ impl DownloadsPage {
                                         .color(NeonTheme::warning_color()));
                                     
                                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                                        if ui.button("Resume").clicked() {
-                                            // TODO: Resume download
+                                        if ui.button(RichText::new(format!("{} Resume", NeonIcons::PLAY))
+                                            .color(NeonTheme::NEON_CYAN)).clicked() {
+                                            if let Some(ref mgr) = self.download_manager {
+                                                let mgr = mgr.clone();
+                                                let id = download.id.clone();
+                                                std::thread::spawn(move || {
+                                                    let rt = tokio::runtime::Runtime::new().unwrap();
+                                                    rt.block_on(async {
+                                                        if let Ok(m) = mgr.lock() {
+                                                            let _ = m.resume_download(&id).await;
+                                                        }
+                                                    });
+                                                });
+                                            }
                                         }
                                         
-                                        if ui.button("Cancel").clicked() {
-                                            // TODO: Cancel download
+                                        if ui.button(RichText::new(format!("{} Cancel", NeonIcons::CROSS))
+                                            .color(NeonTheme::error_color())).clicked() {
+                                            if let Some(ref mgr) = self.download_manager {
+                                                let mgr = mgr.clone();
+                                                let id = download.id.clone();
+                                                std::thread::spawn(move || {
+                                                    let rt = tokio::runtime::Runtime::new().unwrap();
+                                                    rt.block_on(async {
+                                                        if let Ok(m) = mgr.lock() {
+                                                            let _ = m.cancel_download(&id).await;
+                                                        }
+                                                    });
+                                                });
+                                            }
                                         }
                                     });
                                 });
@@ -318,12 +556,30 @@ impl DownloadsPage {
                                         .color(NeonTheme::error_color()));
                                     
                                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                                        if ui.button("Retry").clicked() {
-                                            // TODO: Retry download
+                                        if ui.button(RichText::new(format!("{} Retry", NeonIcons::REFRESH))
+                                            .color(NeonTheme::NEON_CYAN)).clicked() {
+                                            if let Some(ref mgr) = self.download_manager {
+                                                let mgr = mgr.clone();
+                                                let id = download.id.clone();
+                                                std::thread::spawn(move || {
+                                                    let rt = tokio::runtime::Runtime::new().unwrap();
+                                                    rt.block_on(async {
+                                                        if let Ok(m) = mgr.lock() {
+                                                            let _ = m.resume_download(&id).await;
+                                                        }
+                                                    });
+                                                });
+                                            }
                                         }
                                         
-                                        if ui.button("Remove").clicked() {
-                                            // TODO: Remove from list
+                                        if ui.button(RichText::new(format!("{} Remove", NeonIcons::DELETE))
+                                            .color(NeonTheme::error_color())).clicked() {
+                                            if let Some(ref mgr) = self.download_manager {
+                                                if let Ok(m) = mgr.lock() {
+                                                    let _ = m.delete_download(&download.id);
+                                                }
+                                            }
+                                            self.downloads.retain(|d| d.id != download.id);
                                         }
                                     });
                                 });
@@ -344,6 +600,57 @@ impl DownloadsPage {
             } else {
                 Some(download.id.clone())
             };
+        }
+    }
+    
+    /// Open a file with the system default application
+    fn open_file(path: &str) {
+        #[cfg(target_os = "windows")]
+        {
+            let _ = std::process::Command::new("cmd")
+                .args(&["/C", "start", "", path])
+                .spawn();
+        }
+        
+        #[cfg(target_os = "macos")]
+        {
+            let _ = std::process::Command::new("open")
+                .arg(path)
+                .spawn();
+        }
+        
+        #[cfg(target_os = "linux")]
+        {
+            let _ = std::process::Command::new("xdg-open")
+                .arg(path)
+                .spawn();
+        }
+    }
+    
+    /// Open file location in system file browser
+    fn open_file_location(path: &str) {
+        let path_buf = PathBuf::from(path);
+        let parent = path_buf.parent().unwrap_or(Path::new("."));
+        
+        #[cfg(target_os = "windows")]
+        {
+            let _ = std::process::Command::new("explorer")
+                .arg(parent)
+                .spawn();
+        }
+        
+        #[cfg(target_os = "macos")]
+        {
+            let _ = std::process::Command::new("open")
+                .arg(parent)
+                .spawn();
+        }
+        
+        #[cfg(target_os = "linux")]
+        {
+            let _ = std::process::Command::new("xdg-open")
+                .arg(parent)
+                .spawn();
         }
     }
 }
