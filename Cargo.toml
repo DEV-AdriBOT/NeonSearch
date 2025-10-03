@@ -54,6 +54,12 @@ memchr = "2.7"
 twoway = "0.2"
 brotli = "7.0"
 
+# Database for download persistence
+rusqlite = { version = "0.32", features = ["bundled"] }
+
+# Hashing for file integrity
+sha2 = "0.10"
+
 # Platform-specific dependencies for macOS beta compatibility
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.5"
