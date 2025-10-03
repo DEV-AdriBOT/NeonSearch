@@ -13,7 +13,7 @@ egui = "0.29"
 egui_extras = "0.29"
 
 # Networking
-reqwest = { version = "0.12", features = ["json", "cookies"] }
+reqwest = { version = "0.12", features = ["json", "cookies", "stream"] }
 tokio = { version = "1.0", features = ["full"] }
 url = "2.4"
 
@@ -59,6 +59,10 @@ rusqlite = { version = "0.32", features = ["bundled"] }
 
 # Hashing for file integrity
 sha2 = "0.10"
+
+# Async utilities
+futures-core = "0.3"
+futures-util = "0.3"
 
 # Platform-specific dependencies for macOS beta compatibility
 [target.'cfg(target_os = "macos")'.dependencies]
