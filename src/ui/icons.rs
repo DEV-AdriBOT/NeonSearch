@@ -56,6 +56,8 @@ impl NeonIcons {
     pub const CHECK: &'static str = "✓";
     pub const HEART: &'static str = "♡";
     pub const STAR: &'static str = "★";
+    pub const DELETE: &'static str = "🗑";
+    pub const FOLDER_OPEN: &'static str = "📂";
 }
 
 impl NeonIcons {
