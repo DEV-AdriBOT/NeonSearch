@@ -11,6 +11,7 @@ use tokio::sync::mpsc;
 use uuid::Uuid;
 
 use crate::storage::{DownloadsDatabase, DownloadRecord, DownloadState};
+use crate::security::download_validator::{DownloadValidator, ValidationResult};
 
 const CHUNK_SIZE: usize = 64 * 1024; // 64KB chunks
 const MAX_CONCURRENT_DOWNLOADS: usize = 3;
@@ -87,14 +88,30 @@ impl DownloadManager {
     
     /// Start a new download
     pub async fn start_download(&self, url: String, save_path: PathBuf) -> Result<String> {
+        // Validate URL
+        DownloadValidator::validate_url(&url)?;
+        
         let id = Uuid::new_v4().to_string();
         
-        // Extract filename from URL or path
+        // Extract and sanitize filename
         let filename = save_path
             .file_name()
             .and_then(|n| n.to_str())
-            .unwrap_or("download")
-            .to_string();
+            .unwrap_or("download");
+        
+        let filename = DownloadValidator::validate_filename(filename)?;
+        
+        // Validate extension
+        match DownloadValidator::validate_extension(&filename) {
+            ValidationResult::Rejected(reason) => {
+                return Err(anyhow!("Download rejected: {}", reason));
+            }
+            ValidationResult::RequiresConfirmation(msg) => {
+                // Log warning but continue (UI should have already confirmed)
+                println!("Warning: {}", msg);
+            }
+            ValidationResult::Safe => {}
+        }
         
         // Create download record
         let record = DownloadRecord {
@@ -378,6 +395,23 @@ impl DownloadManager {
             .and_then(|v| v.to_str().ok())
             .map(|s| s.to_string());
         
+        // Validate MIME type if present
+        if let Some(ref mime) = mime_type {
+            match DownloadValidator::validate_mime_type(mime) {
+                ValidationResult::RequiresConfirmation(msg) => {
+                    println!("Warning: {}", msg);
+                }
+                _ => {}
+            }
+        }
+        
+        // Check disk space if total size is known
+        if let Some(size) = total_bytes {
+            if !DownloadValidator::check_disk_space(&task.save_path, size)? {
+                return Err(anyhow!("Insufficient disk space for download"));
+            }
+        }
+        
         // Update record with file size
         if let Ok(Some(mut record)) = db.get_by_id(&task.id) {
             record.file_size = total_bytes;
@@ -561,6 +595,19 @@ impl DownloadManager {
     /// Cleanup old completed downloads
     pub fn cleanup_old_downloads(&self, days: i64) -> Result<usize> {
         self.db.cleanup_old_completed(days)
+    }
+    
+    /// Generate a safe download path for a URL
+    pub fn generate_safe_download_path(download_dir: &Path, url: &str) -> PathBuf {
+        // Extract filename from URL
+        let filename = url::Url::parse(url)
+            .ok()
+            .and_then(|u| u.path_segments())
+            .and_then(|s| s.last())
+            .unwrap_or("download")
+            .to_string();
+        
+        DownloadValidator::generate_safe_path(download_dir, &filename)
     }
 }
 

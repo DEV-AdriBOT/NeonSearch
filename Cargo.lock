@@ -2741,6 +2741,7 @@ dependencies = [
  "futures-util",
  "html-entities",
  "image",
+ "libc",
  "log",
  "memchr",
  "objc2 0.5.2",

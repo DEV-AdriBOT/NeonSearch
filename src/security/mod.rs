@@ -3,6 +3,7 @@
 pub mod csp;
 pub mod https_validator;
 pub mod sandbox;
+pub mod download_validator;
 
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
